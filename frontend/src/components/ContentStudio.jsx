@@ -177,8 +177,6 @@ const SortableShotCard = ({ shot, index, projectId, onUpdate, onDelete, uploadin
                     )}
                   </div>
                 )}
-                  </h4>
-                )}
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   {isEditing ? (
                     <Input
