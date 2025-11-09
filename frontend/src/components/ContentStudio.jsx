@@ -1373,6 +1373,88 @@ export const ContentStudio = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Sora Generation Dialog */}
+      <Dialog open={showSoraDialog} onOpenChange={setShowSoraDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wand2 className="w-5 h-5 text-purple-500" />
+              Generate Video with Sora 2
+            </DialogTitle>
+            <DialogDescription>
+              AI will generate a video draft based on the shot's script and visual guide.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedShotForGen && (
+            <div className="space-y-4 py-4">
+              {/* Shot Info */}
+              <div className="p-4 bg-muted rounded-lg space-y-2">
+                <h4 className="font-semibold text-sm">
+                  {selectedShotForGen.shot.segment_name.replace('_', ' ')}
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  <strong>Script:</strong> {selectedShotForGen.shot.script.substring(0, 100)}...
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  <strong>Duration:</strong> {selectedShotForGen.shot.duration}s
+                </p>
+              </div>
+              
+              {/* Model Selection */}
+              <div className="space-y-2">
+                <Label htmlFor="model">Model Selection</Label>
+                <Select value={soraModel} onValueChange={setSoraModel}>
+                  <SelectTrigger id="model">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="sora-2">
+                      <div className="flex flex-col items-start">
+                        <span className="font-semibold">Sora 2</span>
+                        <span className="text-xs text-muted-foreground">Fast • Good quality • Cheaper</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="sora-2-pro">
+                      <div className="flex flex-col items-start">
+                        <span className="font-semibold">Sora 2 Pro</span>
+                        <span className="text-xs text-muted-foreground">Slower • High quality • Premium</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {soraModel === 'sora-2' 
+                    ? '⚡ Best for rapid iteration and social media content' 
+                    : '🎬 Best for production-quality marketing assets'}
+                </p>
+              </div>
+              
+              {/* Info box */}
+              <div className="p-3 bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+                <p className="text-xs text-purple-900 dark:text-purple-100">
+                  <strong>⏱️ Generation time:</strong> 2-5 minutes depending on model and server load
+                </p>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSoraDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={startSoraGeneration}
+              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+            >
+              <Wand2 className="w-4 h-4 mr-2" />
+              Generate Video
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 };
