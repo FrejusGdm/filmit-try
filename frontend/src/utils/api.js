@@ -197,18 +197,6 @@ export const getDirectorProject = async (projectId) => {
   return response.json();
 };
 
-// Get segment analysis (automatic AI analysis of uploaded segment)
-export const getSegmentAnalysis = async (projectId, segmentName) => {
-  const response = await fetch(
-    `${API_BASE_URL}/api/director/segment-analysis/${projectId}/${encodeURIComponent(segmentName)}`,
-    {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
-    }
-  );
-  return response.json();
-};
-
 // Assemble project video with ffmpeg
 export const assembleProjectVideo = async (projectId, options = {}) => {
   const response = await fetch(`${API_BASE_URL}/api/director/assemble`, {
