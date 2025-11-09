@@ -421,18 +421,28 @@ export const ContentStudio = () => {
         setMatchedFormat(projectData.matched_format);
       }
       
-      // Initialize messages with brief summary
-      const shotCount = projectData.shot_list ? projectData.shot_list.length : 0;
-      const formatName = projectData.matched_format ? projectData.matched_format.name : 'a viral format';
-      const platform = projectData.target_platform || 'your platform';
-      
-      const summary = `You're creating content for ${platform} using the "${formatName}" format with ${shotCount} shots to film.`;
-      
-      setMessages([{
-        role: 'assistant',
-        content: `I've created your shot list based on the best viral format for your content. ${summary} Ready to start recording?`,
-        timestamp: new Date()
-      }]);
+      // Load messages from database if they exist
+      if (projectData.messages && projectData.messages.length > 0) {
+        const loadedMessages = projectData.messages.map(msg => ({
+          role: msg.type === 'human' ? 'user' : 'assistant',
+          content: msg.content,
+          timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date()
+        }));
+        setMessages(loadedMessages);
+      } else {
+        // Initialize with welcome message only if no messages exist
+        const shotCount = projectData.shot_list ? projectData.shot_list.length : 0;
+        const formatName = projectData.matched_format ? projectData.matched_format.name : 'a viral format';
+        const platform = projectData.target_platform || 'your platform';
+        
+        const summary = `You're creating content for ${platform} using the "${formatName}" format with ${shotCount} shots to film.`;
+        
+        setMessages([{
+          role: 'assistant',
+          content: `I've created your shot list based on the best viral format for your content. ${summary} Ready to start recording?`,
+          timestamp: new Date()
+        }]);
+      }
     } catch (error) {
       console.error('Error loading project:', error);
       toast.error('Failed to load project');
