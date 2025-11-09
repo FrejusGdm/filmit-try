@@ -515,7 +515,7 @@ Ask me for detailed feedback anytime!`;
         setMessages(prev => [...prev, {
           role: 'assistant',
           content: analysisMessage,
-          timestamp: new Date().toISOString()
+          timestamp: new Date()
         }]);
         
       } else {
