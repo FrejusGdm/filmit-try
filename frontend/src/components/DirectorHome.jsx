@@ -249,9 +249,6 @@ export const DirectorHome = () => {
             <h1 className="text-6xl font-display font-bold text-foreground">
               {user ? `${user.username}'s Studio` : 'Your AI Director'}
             </h1>
-            <p className="text-xl text-muted-foreground leading-relaxed font-sans max-w-2xl mx-auto">
-              Match with proven viral formats, guided filming, and AI editing.
-            </p>
           </div>
 
           {/* Main Prompt Card */}
