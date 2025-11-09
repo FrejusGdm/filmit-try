@@ -782,14 +782,25 @@ export const ContentStudio = () => {
                         )}
                         
                         {assemblyStatus === 'completed' && assemblyId && (
-                          <Button 
-                            onClick={handleDownloadVideo}
-                            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold"
-                            size="lg"
-                          >
-                            <Download className="w-5 h-5 mr-2" />
-                            Download Final Video
-                          </Button>
+                          <div className="space-y-2">
+                            <Button 
+                              onClick={handleDownloadVideo}
+                              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold"
+                              size="lg"
+                            >
+                              <Download className="w-5 h-5 mr-2" />
+                              Download Final Video
+                            </Button>
+                            <Button 
+                              onClick={() => setShowAssemblyDialog(true)}
+                              variant="outline"
+                              className="w-full border-green-300 hover:bg-green-50 dark:hover:bg-green-950/20"
+                              size="lg"
+                            >
+                              <Settings className="w-5 h-5 mr-2" />
+                              Regenerate with Different Settings
+                            </Button>
+                          </div>
                         )}
                       </div>
                     </CardContent>
