@@ -381,6 +381,12 @@ export const ContentStudio = () => {
     optimize_platform: 'youtube'
   });
   
+  // Sora generation state
+  const [generatingShots, setGeneratingShots] = useState({}); // { shotIndex: { jobId, progress, status } }
+  const [showSoraDialog, setShowSoraDialog] = useState(false);
+  const [selectedShotForGen, setSelectedShotForGen] = useState(null);
+  const [soraModel, setSoraModel] = useState('sora-2'); // 'sora-2' or 'sora-2-pro'
+  
   const textareaRef = useRef(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
