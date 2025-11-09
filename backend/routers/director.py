@@ -298,6 +298,56 @@ async def get_director_project(project_id: str):
     return project
 
 
+@router.get("/segment-analysis/{project_id}/{segment_name}")
+async def get_segment_analysis(project_id: str, segment_name: str):
+    """
+    Get the automatic analysis for a specific segment.
+    Returns the AI-generated analysis with scores, feedback, and recommendations.
+    """
+    try:
+        # Try to get from dedicated collection first
+        analysis = await db.segment_analyses.find_one(
+            {"_id": f"{project_id}_{segment_name}"},
+            {"_id": 0}
+        )
+        
+        if analysis:
+            return {
+                "success": True,
+                "analysis": analysis
+            }
+        
+        # Fallback: check if it's embedded in the project
+        project = await db.video_projects.find_one(
+            {"project_id": project_id},
+            {"_id": 0, "shot_list": 1}
+        )
+        
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        shot_list = project.get("shot_list", [])
+        target_shot = next((s for s in shot_list if s.get("segment_name") == segment_name), None)
+        
+        if target_shot and target_shot.get("analysis"):
+            return {
+                "success": True,
+                "analysis": target_shot["analysis"]
+            }
+        
+        # No analysis found
+        return {
+            "success": False,
+            "message": "Analysis not available for this segment. It may not have been uploaded yet or analysis failed."
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving segment analysis: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/seed-formats")
 async def seed_formats():
     """Seed viral formats database (admin endpoint)"""
