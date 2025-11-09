@@ -994,6 +994,8 @@ export const ContentStudio = () => {
                           uploadingSegment={uploadingSegment}
                           handleSegmentUpload={handleSegmentUpload}
                           handleFeedback={handleFeedback}
+                          handleGenerateShot={handleGenerateShot}
+                          generatingStatus={generatingShots[index]}
                         />
                       ))}
                     </div>
