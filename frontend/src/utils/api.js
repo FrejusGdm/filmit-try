@@ -358,3 +358,46 @@ export const cancelSoraJob = async (jobId) => {
   
   return response.json();
 };
+
+
+// ==================== ElevenLabs Music Generation ====================
+
+// Generate music for project
+export const generateMusic = async (projectId, prompt, durationSeconds) => {
+  const response = await fetch(`${API_BASE_URL}/api/director/music/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      project_id: projectId,
+      prompt: prompt,
+      duration_seconds: durationSeconds
+    })
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to generate music');
+  }
+  
+  return response.json();
+};
+
+// Get music info for a project
+export const getMusicInfo = async (projectId) => {
+  const response = await fetch(`${API_BASE_URL}/api/director/music/info/${projectId}`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' }
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to get music info');
+  }
+  
+  return response.json();
+};
+
+// Get music file URL
+export const getMusicUrl = (projectId, filename) => {
+  return `${API_BASE_URL}/api/director/music/${projectId}/${filename}`;
+};
