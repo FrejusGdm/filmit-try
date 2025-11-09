@@ -57,7 +57,8 @@ class ElevenLabsMusicService:
             logger.info(f"Duration: {music_length_ms}ms ({music_length_ms / 1000}s)")
             
             # Call ElevenLabs Music API to compose track
-            track = await self.client.music.compose(
+            # The compose method returns an async generator
+            audio_generator = await self.client.music.compose(
                 prompt=prompt,
                 music_length_ms=music_length_ms
             )
@@ -68,11 +69,14 @@ class ElevenLabsMusicService:
             
             logger.info(f"Saving generated music to: {file_path}")
             
-            # Write audio content to file
-            # track is an async iterator that yields bytes
+            # Collect audio chunks from async generator
+            audio_bytes = b''
+            async for chunk in audio_generator:
+                audio_bytes += chunk
+            
+            # Write complete audio to file
             with open(file_path, 'wb') as f:
-                async for chunk in track:
-                    f.write(chunk)
+                f.write(audio_bytes)
             
             logger.info(f"Music generation completed successfully: {filename}")
             
