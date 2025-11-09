@@ -950,40 +950,6 @@ async def generate_project_music(input: MusicGenerateRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/music/{project_id}/{filename}")
-async def serve_music_file(project_id: str, filename: str):
-    """
-    Serve generated music files for playback
-    
-    This endpoint serves audio files from the uploads/music directory
-    for playback in the frontend.
-    """
-    try:
-        # Construct file path
-        music_dir = Path(__file__).parent.parent / 'uploads' / 'music'
-        file_path = music_dir / filename
-        
-        # Security check: ensure file is in music directory
-        if not file_path.is_relative_to(music_dir):
-            raise HTTPException(status_code=403, detail="Access denied")
-        
-        if not file_path.exists():
-            raise HTTPException(status_code=404, detail="Music file not found")
-        
-        # Return audio file
-        return FileResponse(
-            path=str(file_path),
-            media_type="audio/mpeg",
-            filename=filename
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error serving music file: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @router.get("/music/info/{project_id}")
 async def get_project_music_info(project_id: str):
     """
@@ -1020,4 +986,38 @@ async def get_project_music_info(project_id: str):
         raise
     except Exception as e:
         logger.error(f"Error getting music info: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/music/{project_id}/{filename}")
+async def serve_music_file(project_id: str, filename: str):
+    """
+    Serve generated music files for playback
+    
+    This endpoint serves audio files from the uploads/music directory
+    for playback in the frontend.
+    """
+    try:
+        # Construct file path
+        music_dir = Path(__file__).parent.parent / 'uploads' / 'music'
+        file_path = music_dir / filename
+        
+        # Security check: ensure file is in music directory
+        if not file_path.is_relative_to(music_dir):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="Music file not found")
+        
+        # Return audio file
+        return FileResponse(
+            path=str(file_path),
+            media_type="audio/mpeg",
+            filename=filename
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error serving music file: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
