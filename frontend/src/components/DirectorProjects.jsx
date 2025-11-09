@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { UserMenu } from './UserMenu';
 
 export const DirectorProjects = () => {
   const navigate = useNavigate();
