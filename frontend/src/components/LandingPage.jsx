@@ -79,7 +79,7 @@ export const LandingPage = () => {
             <div className="flex items-center gap-4">
               <button 
                 onClick={() => navigate('/login')} 
-                className="font-sans text-base text-muted-foreground hover:text-foreground transition-colors"
+                className="font-display text-[1.1em] font-semibold text-muted-foreground hover:text-foreground transition-colors"
               >
                 Sign In
               </button>
