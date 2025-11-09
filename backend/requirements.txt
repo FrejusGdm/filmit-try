@@ -148,3 +148,4 @@ yt-dlp==2025.10.22
 vectra-py==0.0.5
 defusedxml==0.7.1
 google-cloud-aiplatform==1.126.1
+grpc-google-iam-v1==0.14.3
