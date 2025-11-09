@@ -175,7 +175,7 @@ async def upload_video_segment(
     segment_name: str,
     file: UploadFile = File(...)
 ):
-    """Upload a video segment for a project"""
+    """Upload a video segment for a project and trigger automatic analysis"""
     try:
         # Create upload directory if it doesn't exist
         upload_dir = Path("/app/backend/uploads")
@@ -186,7 +186,22 @@ async def upload_video_segment(
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
-        # Update project in database
+        logger.info(f"Uploaded segment {segment_name} to {file_path}")
+        
+        # Get project to retrieve shot data for analysis
+        project = await db.video_projects.find_one({"project_id": project_id}, {"_id": 0})
+        
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        # Find the shot data for this segment
+        shot_list = project.get("shot_list", [])
+        shot_data = next((s for s in shot_list if s.get("segment_name") == segment_name), None)
+        
+        if not shot_data:
+            raise HTTPException(status_code=404, detail=f"Segment '{segment_name}' not found in shot list")
+        
+        # Update segment data
         segment_data = {
             "segment_name": segment_name,
             "file_path": str(file_path),
@@ -203,23 +218,70 @@ async def upload_video_segment(
         )
         
         # Update shot list to mark segment as uploaded
-        project = await db.video_projects.find_one({"project_id": project_id}, {"_id": 0})
-        if project and project.get("shot_list"):
-            shot_list = project["shot_list"]
-            for shot in shot_list:
-                if shot.get("segment_name") == segment_name:
-                    shot["uploaded"] = True
-            
-            await db.video_projects.update_one(
-                {"project_id": project_id},
-                {"$set": {"shot_list": shot_list}}
-            )
+        for shot in shot_list:
+            if shot.get("segment_name") == segment_name:
+                shot["uploaded"] = True
+                shot["file_path"] = str(file_path)
         
-        return {
-            "success": True,
-            "message": f"Segment '{segment_name}' uploaded successfully",
-            "file_path": str(file_path)
-        }
+        await db.video_projects.update_one(
+            {"project_id": project_id},
+            {"$set": {"shot_list": shot_list}}
+        )
+        
+        logger.info(f"Marked {segment_name} as uploaded in database")
+        
+        # ⚡ TRIGGER AUTOMATIC ANALYSIS
+        # Run analysis in background (non-blocking)
+        api_key = os.environ.get('EMERGENT_LLM_KEY')
+        if api_key:
+            try:
+                logger.info(f"Starting automatic analysis for {segment_name}")
+                
+                # Analyze the uploaded segment
+                analysis = await analyze_uploaded_segment(
+                    project_id=project_id,
+                    segment_name=segment_name,
+                    file_path=str(file_path),
+                    shot_data=shot_data,
+                    api_key=api_key,
+                    db=db
+                )
+                
+                logger.info(f"✅ Analysis complete for {segment_name}. Score: {analysis.get('content_analysis', {}).get('overall_assessment', {}).get('overall_score', 'N/A')}/10")
+                
+                return {
+                    "success": True,
+                    "message": f"Segment '{segment_name}' uploaded and analyzed successfully",
+                    "file_path": str(file_path),
+                    "analysis_available": True,
+                    "analysis_summary": {
+                        "overall_score": analysis.get("content_analysis", {}).get("overall_assessment", {}).get("overall_score", 0),
+                        "viral_potential": analysis.get("content_analysis", {}).get("overall_assessment", {}).get("viral_potential", "Unknown"),
+                        "ready_for_assembly": analysis.get("content_analysis", {}).get("overall_assessment", {}).get("ready_for_assembly", True)
+                    }
+                }
+                
+            except Exception as analysis_error:
+                # Don't fail the upload if analysis fails
+                logger.error(f"Analysis failed but upload succeeded: {str(analysis_error)}")
+                return {
+                    "success": True,
+                    "message": f"Segment '{segment_name}' uploaded successfully (analysis failed)",
+                    "file_path": str(file_path),
+                    "analysis_available": False,
+                    "analysis_error": str(analysis_error)
+                }
+        else:
+            logger.warning("EMERGENT_LLM_KEY not available, skipping analysis")
+            return {
+                "success": True,
+                "message": f"Segment '{segment_name}' uploaded successfully (analysis skipped)",
+                "file_path": str(file_path),
+                "analysis_available": False
+            }
+        
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error uploading segment: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
