@@ -848,3 +848,176 @@ async def serve_video_preview(project_id: str, filename: str):
     except Exception as e:
         logger.error(f"Error serving video preview: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== ElevenLabs Music Generation ====================
+
+from services.elevenlabs_music_service import elevenlabs_music_service
+
+
+class MusicGenerateRequest(BaseModel):
+    """Request model for ElevenLabs music generation"""
+    project_id: str
+    prompt: str = Field(..., description="Description of the music to generate")
+    duration_seconds: int = Field(default=30, description="Duration in seconds (10-60)")
+
+
+class MusicGenerateResponse(BaseModel):
+    """Response model for music generation"""
+    success: bool
+    filename: str
+    file_path: str
+    duration_seconds: float
+    message: str
+
+
+@router.post("/music/generate", response_model=MusicGenerateResponse)
+async def generate_project_music(input: MusicGenerateRequest):
+    """
+    Generate background music for a project using ElevenLabs Music API
+    
+    This endpoint:
+    1. Takes a text prompt describing the desired music
+    2. Generates music using ElevenLabs API
+    3. Saves the audio file to uploads/music directory
+    4. Returns the file path for playback
+    
+    Duration options: 10, 20, 30, 60 seconds
+    """
+    try:
+        # Validate duration
+        if input.duration_seconds < 10 or input.duration_seconds > 60:
+            raise HTTPException(
+                status_code=400,
+                detail="Duration must be between 10 and 60 seconds"
+            )
+        
+        # Check if project exists
+        project = await db.video_projects.find_one(
+            {"project_id": input.project_id},
+            {"_id": 0}
+        )
+        
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        logger.info(f"Starting music generation for project {input.project_id}")
+        logger.info(f"Prompt: {input.prompt[:100]}...")
+        
+        # Convert seconds to milliseconds for API
+        music_length_ms = input.duration_seconds * 1000
+        
+        # Generate music
+        result = await elevenlabs_music_service.generate_music(
+            prompt=input.prompt,
+            music_length_ms=music_length_ms,
+            project_id=input.project_id
+        )
+        
+        # Store music info in project
+        music_data = {
+            "filename": result["filename"],
+            "file_path": result["file_path"],
+            "prompt": input.prompt,
+            "duration_seconds": result["duration_seconds"],
+            "generated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.video_projects.update_one(
+            {"project_id": input.project_id},
+            {
+                "$set": {
+                    "music": music_data,
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
+            }
+        )
+        
+        logger.info(f"Music generation completed: {result['filename']}")
+        
+        return MusicGenerateResponse(
+            success=True,
+            filename=result["filename"],
+            file_path=result["filename"],  # Return just filename for frontend URL construction
+            duration_seconds=result["duration_seconds"],
+            message="Music generated successfully"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating music: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/music/{project_id}/{filename}")
+async def serve_music_file(project_id: str, filename: str):
+    """
+    Serve generated music files for playback
+    
+    This endpoint serves audio files from the uploads/music directory
+    for playback in the frontend.
+    """
+    try:
+        # Construct file path
+        music_dir = Path(__file__).parent.parent / 'uploads' / 'music'
+        file_path = music_dir / filename
+        
+        # Security check: ensure file is in music directory
+        if not file_path.is_relative_to(music_dir):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="Music file not found")
+        
+        # Return audio file
+        return FileResponse(
+            path=str(file_path),
+            media_type="audio/mpeg",
+            filename=filename
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error serving music file: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/music/info/{project_id}")
+async def get_project_music_info(project_id: str):
+    """
+    Get music information for a project
+    
+    Returns music metadata if music has been generated for this project
+    """
+    try:
+        project = await db.video_projects.find_one(
+            {"project_id": project_id},
+            {"_id": 0, "music": 1}
+        )
+        
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        music_data = project.get("music")
+        
+        if not music_data:
+            return {
+                "has_music": False,
+                "message": "No music generated for this project yet"
+            }
+        
+        return {
+            "has_music": True,
+            "filename": music_data.get("filename"),
+            "prompt": music_data.get("prompt"),
+            "duration_seconds": music_data.get("duration_seconds"),
+            "generated_at": music_data.get("generated_at")
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting music info: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
