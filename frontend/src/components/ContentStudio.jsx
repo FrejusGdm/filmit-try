@@ -63,7 +63,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 // Sortable Shot Card Component
-const SortableShotCard = ({ shot, index, projectId, onUpdate, onDelete, uploadingSegment, handleSegmentUpload, handleFeedback, handleGenerateShot, generatingStatus }) => {
+const SortableShotCard = ({ shot, index, projectId, onUpdate, onDelete, uploadingSegment, handleSegmentUpload, handleFeedback, handleGenerateShot, generatingStatus, handlePreviewVideo }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
     segment_name: shot.segment_name,
