@@ -1027,9 +1027,10 @@ Be specific and actionable. Tell me what to reshoot vs what can be fixed in edit
                       setInputValue(comprehensivePrompt);
                       textareaRef.current?.focus();
                     }}
-                    className="text-xs"
+                    className="text-xs gap-1.5"
                   >
-                    🎯 Get Feedback
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    Get Feedback
                   </Button>
                 )}
               </div>
