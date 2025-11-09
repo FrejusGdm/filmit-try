@@ -18,6 +18,7 @@ import sys
 sys.path.append(str(Path(__file__).parent.parent / "agents"))
 from director_workflow import DirectorWorkflow, DirectorState
 from viral_formats import seed_viral_formats
+from segment_analysis_agent import analyze_uploaded_segment
 from langchain_core.messages import HumanMessage
 
 
