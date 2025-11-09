@@ -218,22 +218,68 @@ Respond ONLY with JSON:
                 target_shot = uploaded_shots[-1]  # Most recently uploaded
         
         if target_shot:
-            # Get feedback from Feedback Agent
-            feedback_result = await self.feedback_agent.analyze_shot(
-                segment_name=target_shot["segment_name"],
-                script=target_shot["script"],
-                visual_guide=target_shot["visual_guide"],
-                duration_target=target_shot["duration"],
-                file_path=target_shot.get("file_path")
-            )
+            # Check if we have automatic analysis available
+            analysis = target_shot.get("analysis")
             
-            return f"""🎬 **Feedback on {target_shot['segment_name'].replace('_', ' ').title()}:**
+            if analysis:
+                # Use the automatic analysis that was generated on upload
+                content_analysis = analysis.get("content_analysis", {})
+                overall = content_analysis.get("overall_assessment", {})
+                duration_analysis = content_analysis.get("duration_analysis", {})
+                visual_quality = content_analysis.get("visual_quality", {})
+                director_context = content_analysis.get("director_context", {})
+                
+                # Format the analysis into friendly feedback
+                feedback = f"""🎬 **Feedback on {target_shot['segment_name'].replace('_', ' ').title()}:**
+
+📊 **Overall Score: {overall.get('overall_score', 'N/A')}/10**
+🔥 **Viral Potential: {overall.get('viral_potential', 'Unknown')}**
+
+✅ **What's Working Well:**
+{self._format_list(overall.get('strengths', []))}
+
+📈 **Quick Wins (Do These Now):**
+{self._format_list(overall.get('quick_wins', []))}
+
+🎯 **Areas to Improve:**
+{self._format_list(overall.get('areas_for_improvement', []))}
+
+⏱️ **Duration:** {duration_analysis.get('actual_seconds', 'N/A')}s (target: {duration_analysis.get('target_seconds', 'N/A')}s) - {'✅ Good' if duration_analysis.get('duration_ok', False) else '⚠️ Needs adjustment'}
+
+🎥 **Visual Quality:** {visual_quality.get('visual_score', 'N/A')}/10
+{visual_quality.get('aspect_ratio_feedback', '')}
+
+💡 **Director's Take:**
+{director_context.get('summary_for_director', 'Looks good overall!')}
+
+{'🚀 **Ready for Assembly:** Yes' if overall.get('ready_for_assembly', False) else '⏸️ **Needs Work Before Assembly**'}
+
+Want me to go deeper on any specific aspect or compare this to viral examples?"""
+                
+                return feedback
+            else:
+                # Fallback to original Feedback Agent if no analysis available
+                feedback_result = await self.feedback_agent.analyze_shot(
+                    segment_name=target_shot["segment_name"],
+                    script=target_shot["script"],
+                    visual_guide=target_shot["visual_guide"],
+                    duration_target=target_shot["duration"],
+                    file_path=target_shot.get("file_path")
+                )
+                
+                return f"""🎬 **Feedback on {target_shot['segment_name'].replace('_', ' ').title()}:**
 
 {feedback_result['feedback']}
 
 Want me to suggest improvements or analyze another shot?"""
         else:
             return "I don't see any uploaded shots yet. Upload a shot and I'll give you detailed feedback!"
+    
+    def _format_list(self, items: list) -> str:
+        """Format a list with bullet points."""
+        if not items:
+            return "- None specified"
+        return "\n".join([f"- {item}" for item in items])
     
     async def _handle_shot_list_modification(self, intent: Dict, state: DirectorState) -> str:
         """Handle user request to modify shot list"""
