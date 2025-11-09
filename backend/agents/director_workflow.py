@@ -291,6 +291,156 @@ Want me to suggest improvements or analyze another shot?"""
             return "- None specified"
         return "\n".join([f"- {item}" for item in items])
     
+    async def _handle_comprehensive_feedback(self, shot_list: list) -> str:
+        """
+        Provide comprehensive, prioritized feedback on all uploaded shots.
+        Focuses on critical issues, high-impact improvements, and quick wins.
+        """
+        uploaded_shots = [s for s in shot_list if s.get("uploaded")]
+        
+        if not uploaded_shots:
+            return "No shots uploaded yet. Upload your shots and I'll give you comprehensive feedback!"
+        
+        # Analyze all shots and categorize issues
+        critical_issues = []
+        high_impact_improvements = []
+        quick_wins = []
+        shots_ready = []
+        shots_need_work = []
+        
+        for shot in uploaded_shots:
+            shot_name = shot['segment_name'].replace('_', ' ').title()
+            analysis = shot.get('analysis')
+            
+            if analysis:
+                content_analysis = analysis.get('content_analysis', {})
+                overall = content_analysis.get('overall_assessment', {})
+                duration = content_analysis.get('duration_analysis', {})
+                visual = content_analysis.get('visual_quality', {})
+                
+                score = overall.get('overall_score', 0)
+                ready = overall.get('ready_for_assembly', False)
+                
+                # Categorize the shot
+                if ready and score >= 8:
+                    shots_ready.append(f"{shot_name} ({score}/10)")
+                else:
+                    shots_need_work.append(f"{shot_name} ({score}/10)")
+                
+                # Extract critical issues (score < 7 or not ready)
+                if score < 7 or not ready:
+                    issues = overall.get('areas_for_improvement', [])
+                    for issue in issues[:2]:  # Top 2 issues
+                        critical_issues.append(f"**{shot_name}:** {issue}")
+                
+                # Extract high-impact improvements (score 7-8)
+                elif score >= 7 and score < 9:
+                    improvements = overall.get('areas_for_improvement', [])
+                    for improvement in improvements[:1]:  # Top improvement
+                        high_impact_improvements.append(f"**{shot_name}:** {improvement}")
+                
+                # Extract quick wins
+                quick_wins_shot = overall.get('quick_wins', [])
+                for win in quick_wins_shot[:2]:  # Top 2 quick wins
+                    quick_wins.append(f"**{shot_name}:** {win}")
+        
+        # Build comprehensive feedback
+        feedback = f"""📋 **COMPREHENSIVE FEEDBACK - {len(uploaded_shots)} Shots Analyzed**
+
+{'='*50}
+
+"""
+        
+        # Status Overview
+        feedback += f"""📊 **STATUS OVERVIEW:**
+✅ **Ready for Assembly:** {len(shots_ready)} shot(s)
+{self._format_list(shots_ready) if shots_ready else '- None yet'}
+
+⚠️ **Needs Attention:** {len(shots_need_work)} shot(s)
+{self._format_list(shots_need_work) if shots_need_work else '- None'}
+
+{'='*50}
+
+"""
+        
+        # Critical Issues (highest priority)
+        if critical_issues:
+            feedback += f"""🚨 **CRITICAL ISSUES** (Fix These First - Reshoot Recommended)
+These will prevent your video from going viral:
+
+{self._format_list(critical_issues)}
+
+{'='*50}
+
+"""
+        
+        # High-Impact Improvements
+        if high_impact_improvements:
+            feedback += f"""🎯 **HIGH-IMPACT IMPROVEMENTS** (Significant Boost to Engagement)
+These changes will make the biggest difference:
+
+{self._format_list(high_impact_improvements)}
+
+{'='*50}
+
+"""
+        
+        # Quick Wins
+        if quick_wins:
+            feedback += f"""⚡ **QUICK WINS** (Easy Fixes - Do These Now)
+Low effort, high reward improvements:
+
+{self._format_list(quick_wins)}
+
+{'='*50}
+
+"""
+        
+        # Detailed shot-by-shot breakdown
+        feedback += "📝 **DETAILED SHOT-BY-SHOT BREAKDOWN:**\n\n"
+        
+        for shot in uploaded_shots:
+            shot_name = shot['segment_name'].replace('_', ' ').title()
+            analysis = shot.get('analysis')
+            
+            if analysis:
+                content_analysis = analysis.get('content_analysis', {})
+                overall = content_analysis.get('overall_assessment', {})
+                
+                score = overall.get('overall_score', 0)
+                viral_potential = overall.get('viral_potential', 'Unknown')
+                ready = overall.get('ready_for_assembly', False)
+                
+                status_icon = "✅" if ready else "⚠️"
+                
+                feedback += f"""{status_icon} **{shot_name}:** {score}/10 | Viral: {viral_potential}
+   Strengths: {', '.join(overall.get('strengths', ['N/A'])[:2])}
+   Fix: {overall.get('areas_for_improvement', ['Looking good!'])[0]}
+
+"""
+        
+        # Final recommendations
+        feedback += f"""{'='*50}
+
+💡 **FINAL RECOMMENDATIONS:**
+
+"""
+        
+        if len(shots_need_work) > 0:
+            feedback += f"""1. **RESHOOT PRIORITY:** Focus on {', '.join([s.split('(')[0].strip() for s in shots_need_work])}
+2. **TIMELINE:** Plan to reshoot {len([s for s in uploaded_shots if shot.get('analysis', {}).get('content_analysis', {}).get('overall_assessment', {}).get('overall_score', 10) < 7])} critical shot(s)
+3. **NEXT STEPS:** Address critical issues first, then high-impact improvements
+"""
+        else:
+            feedback += """1. **GREAT WORK!** All shots are ready for assembly
+2. **POLISH:** Consider the quick wins for extra viral potential
+3. **NEXT STEPS:** Ready to assemble your final video!
+"""
+        
+        feedback += "\nWant me to dive deeper into any specific shot? Just ask! 🎬"
+        
+        return feedback
+    
     async def _handle_shot_list_modification(self, intent: Dict, state: DirectorState) -> str:
         """Handle user request to modify shot list"""
         shot_list = state.get("shot_list", [])
