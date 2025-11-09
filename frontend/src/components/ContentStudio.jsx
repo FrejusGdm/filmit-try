@@ -8,7 +8,7 @@ import { Input } from './ui/input';
 import { 
   Sparkles, Upload, X, Send, Video, CheckCircle, XCircle, 
   Film, Loader2, User, Clock, ChevronLeft, FolderOpen, Clapperboard,
-  Download, Settings, Edit2, Trash2, Save, Plus, GripVertical, MessageSquare
+  Download, Settings, Edit2, Trash2, Save, Plus, GripVertical, MessageSquare, Wand2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -25,6 +25,8 @@ import {
   deleteShot,
   reorderShots,
   getSegmentAnalysis
+  generateShotWithSora,
+  checkSoraStatus
 } from '../utils/api';
 import {
   Dialog,
@@ -62,7 +64,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 // Sortable Shot Card Component
-const SortableShotCard = ({ shot, index, projectId, onUpdate, onDelete, uploadingSegment, handleSegmentUpload, handleFeedback }) => {
+const SortableShotCard = ({ shot, index, projectId, onUpdate, onDelete, uploadingSegment, handleSegmentUpload, handleFeedback, handleGenerateShot, generatingStatus, handlePreviewVideo }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
     segment_name: shot.segment_name,
@@ -165,10 +167,18 @@ const SortableShotCard = ({ shot, index, projectId, onUpdate, onDelete, uploadin
                     className="text-sm font-semibold mb-2"
                   />
                 ) : (
-                  <h4 className="font-semibold text-sm text-foreground capitalize">
-                    {shot.segment_name.replace('_', ' ')}
-                  </h4>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-semibold text-sm text-foreground capitalize">
+                      {shot.segment_name.replace('_', ' ')}
+                    </h4>
+                    {shot.generated_by_sora && (
+                      <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs">
+                        ✨ AI Generated
+                      </Badge>
+                    )}
+                  </div>
                 )}
+                
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   {isEditing ? (
                     <Input
@@ -183,12 +193,23 @@ const SortableShotCard = ({ shot, index, projectId, onUpdate, onDelete, uploadin
                     </Badge>
                   )}
                   {shot.uploaded && !isEditing && (
-                    <button
-                      onClick={() => handleFeedback(shot.segment_name)}
-                      className="text-xs text-primary hover:underline font-semibold"
-                    >
-                      Get Feedback
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {shot.generated_by_sora && (
+                        <button
+                          onClick={() => handlePreviewVideo(shot, index)}
+                          className="text-xs text-purple-600 hover:underline font-semibold flex items-center gap-1"
+                        >
+                          <Video className="w-3 h-3" />
+                          Watch Preview
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleFeedback(shot.segment_name)}
+                        className="text-xs text-primary hover:underline font-semibold"
+                      >
+                        Get Feedback
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -267,7 +288,7 @@ const SortableShotCard = ({ shot, index, projectId, onUpdate, onDelete, uploadin
             </div>
           </div>
 
-          {!shot.uploaded && !isEditing && (
+          {!isEditing && (
             <Button
               size="sm"
               onClick={() => {
@@ -282,20 +303,81 @@ const SortableShotCard = ({ shot, index, projectId, onUpdate, onDelete, uploadin
               }}
               disabled={uploadingSegment === shot.segment_name}
               className="w-full"
-              variant="outline"
+              variant={shot.uploaded ? "secondary" : "outline"}
             >
               {uploadingSegment === shot.segment_name ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Uploading...
                 </>
-              ) : (
+              ) : shot.uploaded ? (
                 <>
                   <Upload className="w-4 h-4 mr-2" />
-                  Upload Footage
+                  Replace Footage
                 </>
+          {!shot.uploaded && !isEditing && (
+            <>
+              {generatingStatus ? (
+                // Show generation progress
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Generating with Sora...</span>
+                    <span className="font-semibold text-primary">{generatingStatus.progress}%</span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                    <div 
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 h-full transition-all duration-300"
+                      style={{ width: `${generatingStatus.progress}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground italic">
+                    {generatingStatus.status === 'queued' && 'Queued for processing...'}
+                    {generatingStatus.status === 'in_progress' && 'AI is creating your video...'}
+                  </p>
+                </div>
+              ) : (
+                // Show action buttons
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => handleGenerateShot(index)}
+                    disabled={uploadingSegment === shot.segment_name}
+                    className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0"
+                  >
+                    <Wand2 className="w-4 h-4 mr-2" />
+                    Generate Draft
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'video/*';
+                      input.onchange = (e) => {
+                        const file = e.target.files[0];
+                        if (file) handleSegmentUpload(shot, file);
+                      };
+                      input.click();
+                    }}
+                    disabled={uploadingSegment === shot.segment_name}
+                    className="flex-1"
+                    variant="outline"
+                  >
+                    {uploadingSegment === shot.segment_name ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Upload Footage
+                      </>
+                    )}
+                  </Button>
+                </div>
               )}
-            </Button>
+            </>
           )}
         </div>
       </CardContent>
@@ -380,6 +462,16 @@ export const ContentStudio = () => {
     optimize_platform: 'youtube'
   });
   
+  // Sora generation state
+  const [generatingShots, setGeneratingShots] = useState({}); // { shotIndex: { jobId, progress, status } }
+  const [showSoraDialog, setShowSoraDialog] = useState(false);
+  const [selectedShotForGen, setSelectedShotForGen] = useState(null);
+  const [soraModel, setSoraModel] = useState('sora-2'); // 'sora-2' or 'sora-2-pro'
+  
+  // Video preview state
+  const [showVideoPreview, setShowVideoPreview] = useState(false);
+  const [previewVideoData, setPreviewVideoData] = useState(null); // { shot, index, videoUrl }
+  
   const textareaRef = useRef(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -417,18 +509,28 @@ export const ContentStudio = () => {
         setMatchedFormat(projectData.matched_format);
       }
       
-      // Initialize messages with brief summary
-      const shotCount = projectData.shot_list ? projectData.shot_list.length : 0;
-      const formatName = projectData.matched_format ? projectData.matched_format.name : 'a viral format';
-      const platform = projectData.target_platform || 'your platform';
-      
-      const summary = `You're creating content for ${platform} using the "${formatName}" format with ${shotCount} shots to film.`;
-      
-      setMessages([{
-        role: 'assistant',
-        content: `I've created your shot list based on the best viral format for your content. ${summary} Ready to start recording?`,
-        timestamp: new Date()
-      }]);
+      // Load messages from database if they exist
+      if (projectData.messages && projectData.messages.length > 0) {
+        const loadedMessages = projectData.messages.map(msg => ({
+          role: msg.type === 'human' ? 'user' : 'assistant',
+          content: msg.content,
+          timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date()
+        }));
+        setMessages(loadedMessages);
+      } else {
+        // Initialize with welcome message only if no messages exist
+        const shotCount = projectData.shot_list ? projectData.shot_list.length : 0;
+        const formatName = projectData.matched_format ? projectData.matched_format.name : 'a viral format';
+        const platform = projectData.target_platform || 'your platform';
+        
+        const summary = `You're creating content for ${platform} using the "${formatName}" format with ${shotCount} shots to film.`;
+        
+        setMessages([{
+          role: 'assistant',
+          content: `I've created your shot list based on the best viral format for your content. ${summary} Ready to start recording?`,
+          timestamp: new Date()
+        }]);
+      }
     } catch (error) {
       console.error('Error loading project:', error);
       toast.error('Failed to load project');
@@ -539,6 +641,165 @@ Ask me for detailed feedback anytime!`;
       setUploadingSegment(null);
     }
   };
+
+  // Sora generation handlers
+  const handleGenerateShot = async (shotIndex) => {
+    const shot = shotList[shotIndex];
+    
+    if (!shot) {
+      toast.error('Shot not found');
+      return;
+    }
+    
+    // Show confirmation dialog with model selection
+    setSelectedShotForGen({ shot, index: shotIndex });
+    setShowSoraDialog(true);
+  };
+  
+  const startSoraGeneration = async () => {
+    if (!selectedShotForGen) return;
+    
+    const { shot, index } = selectedShotForGen;
+    setShowSoraDialog(false);
+    
+    try {
+      // Start generation
+      const result = await generateShotWithSora(projectId, index, soraModel, '1280x720');
+      
+      if (result.success) {
+        // Track this generation job
+        setGeneratingShots(prev => ({
+          ...prev,
+          [index]: {
+            jobId: result.job_id,
+            progress: result.progress,
+            status: result.status,
+            segmentName: shot.segment_name
+          }
+        }));
+        
+        toast.success(`Generating ${shot.segment_name} with Sora ${soraModel}...`, {
+          description: 'This may take a few minutes'
+        });
+        
+        // Start polling for this job
+        pollSoraStatus(result.job_id, index);
+      }
+    } catch (error) {
+      console.error('Sora generation error:', error);
+      toast.error(error.message || 'Failed to start video generation');
+    }
+  };
+  
+  const pollSoraStatus = async (jobId, shotIndex) => {
+    const checkStatus = async () => {
+      try {
+        const status = await checkSoraStatus(jobId);
+        
+        // Update generation state
+        setGeneratingShots(prev => ({
+          ...prev,
+          [shotIndex]: {
+            ...prev[shotIndex],
+            progress: status.progress,
+            status: status.status
+          }
+        }));
+        
+        if (status.status === 'completed' && status.file_path) {
+          // Mark shot as uploaded
+          setShotList(prev => prev.map((s, idx) => 
+            idx === shotIndex 
+              ? { ...s, uploaded: true, file_path: status.file_path, generated_by_sora: true }
+              : s
+          ));
+          
+          // Remove from generating shots
+          setGeneratingShots(prev => {
+            const updated = { ...prev };
+            delete updated[shotIndex];
+            return updated;
+          });
+          
+          toast.success(`${status.segment_name} generated successfully! ✨`, {
+            description: 'Video is ready and marked as uploaded'
+          });
+          
+          // Reload project
+          await loadProject();
+          
+        } else if (status.status === 'failed') {
+          // Remove from generating shots
+          setGeneratingShots(prev => {
+            const updated = { ...prev };
+            delete updated[shotIndex];
+            return updated;
+          });
+          
+          toast.error(`Generation failed: ${status.error || 'Unknown error'}`);
+          
+        } else {
+          // Continue polling (every 5 seconds for Sora)
+          setTimeout(() => checkStatus(), 5000);
+        }
+      } catch (error) {
+        console.error('Error checking Sora status:', error);
+        // Continue polling even on error
+        setTimeout(() => checkStatus(), 5000);
+      }
+    };
+    
+    checkStatus();
+  };
+
+  // Video preview handler
+  const handlePreviewVideo = (shot, index) => {
+    if (!shot.file_path) {
+      toast.error('Video file not found');
+      return;
+    }
+    
+    // Extract filename from file path
+    const filename = shot.file_path.split('/').pop();
+    const videoUrl = `${process.env.REACT_APP_BACKEND_URL}/api/director/video-preview/${projectId}/${filename}`;
+    
+    setPreviewVideoData({
+      shot,
+      index,
+      videoUrl
+    });
+    setShowVideoPreview(true);
+  };
+  
+  // Regenerate shot with Sora
+  const handleRegenerateShot = (shotIndex) => {
+    // Close preview modal
+    setShowVideoPreview(false);
+    
+    // Open generation dialog
+    const shot = shotList[shotIndex];
+    setSelectedShotForGen({ shot, index: shotIndex });
+    setShowSoraDialog(true);
+  };
+  
+  // Delete generated draft
+  const handleDeleteDraft = async (shotIndex) => {
+    const confirmed = window.confirm('Delete this generated draft? You can regenerate it anytime.');
+    
+    if (confirmed) {
+      // Update shot to mark as not uploaded
+      setShotList(prev => prev.map((s, idx) => 
+        idx === shotIndex 
+          ? { ...s, uploaded: false, file_path: null, generated_by_sora: false }
+          : s
+      ));
+      
+      setShowVideoPreview(false);
+      toast.success('Draft deleted. You can generate a new one.');
+    }
+  };
+
+
 
   const allSegmentsUploaded = () => {
     return shotList.length > 0 && shotList.every(shot => shot.uploaded);
@@ -765,63 +1026,6 @@ Ask me for detailed feedback anytime!`;
                     Add Shot
                   </Button>
                 </div>
-                
-                {/* Generate Final Video Button */}
-                {allSegmentsUploaded() && (
-                  <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 dark:border-green-800">
-                    <CardContent className="pt-6 pb-6">
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
-                            <CheckCircle className="w-6 h-6 text-white" />
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-foreground">All Shots Complete!</h3>
-                            <p className="text-xs text-muted-foreground">Ready to assemble your final video</p>
-                          </div>
-                        </div>
-                        
-                        {!isAssembling && !assemblyId && (
-                          <Button 
-                            onClick={() => setShowAssemblyDialog(true)}
-                            className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold"
-                            size="lg"
-                          >
-                            <Clapperboard className="w-5 h-5 mr-2" />
-                            Generate Final Video
-                          </Button>
-                        )}
-                        
-                        {isAssembling && (
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-muted-foreground">Assembling video...</span>
-                              <span className="font-semibold text-foreground">{assemblyProgress}%</span>
-                            </div>
-                            <Progress value={assemblyProgress} className="h-2" />
-                            <p className="text-xs text-muted-foreground">
-                              {assemblyProgress < 30 && "Processing segments..."}
-                              {assemblyProgress >= 30 && assemblyProgress < 60 && "Adding transitions..."}
-                              {assemblyProgress >= 60 && assemblyProgress < 90 && "Optimizing video..."}
-                              {assemblyProgress >= 90 && "Finalizing..."}
-                            </p>
-                          </div>
-                        )}
-                        
-                        {assemblyStatus === 'completed' && assemblyId && (
-                          <Button 
-                            onClick={handleDownloadVideo}
-                            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold"
-                            size="lg"
-                          >
-                            <Download className="w-5 h-5 mr-2" />
-                            Download Final Video
-                          </Button>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
               </div>
 
               {/* Add Shot Form */}
@@ -907,11 +1111,83 @@ Ask me for detailed feedback anytime!`;
                           uploadingSegment={uploadingSegment}
                           handleSegmentUpload={handleSegmentUpload}
                           handleFeedback={handleFeedback}
+                          handleGenerateShot={handleGenerateShot}
+                          generatingStatus={generatingShots[index]}
+                          handlePreviewVideo={handlePreviewVideo}
                         />
                       ))}
                     </div>
                   </SortableContext>
                 </DndContext>
+              )}
+              
+              {/* Generate Video Button - Below Shot Cards */}
+              {shotList.length > 0 && (
+                <div className="pt-4 space-y-3">
+                  {!isAssembling && !assemblyId && (
+                    <Button 
+                      onClick={() => {
+                        // Check if any shots have footage uploaded
+                        const hasUploads = shotList.some(shot => shot.uploaded);
+                        if (!hasUploads) {
+                          toast.error('Please upload footage for at least one shot before generating the video.', {
+                            description: 'Click the "Upload Footage" button on any shot to add your video clips.',
+                            duration: 5000
+                          });
+                          return;
+                        }
+                        setShowAssemblyDialog(true);
+                      }}
+                      className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold shadow-lg"
+                      size="lg"
+                    >
+                      <Clapperboard className="w-5 h-5 mr-2" />
+                      Generate Video
+                    </Button>
+                  )}
+                  
+                  {isAssembling && (
+                    <Card className="border-primary/20 bg-gradient-to-br from-background to-primary/5">
+                      <CardContent className="pt-4 pb-4">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Generating video...</span>
+                            <span className="font-semibold text-foreground">{assemblyProgress}%</span>
+                          </div>
+                          <Progress value={assemblyProgress} className="h-2" />
+                          <p className="text-xs text-muted-foreground">
+                            {assemblyProgress < 30 && "Processing segments..."}
+                            {assemblyProgress >= 30 && assemblyProgress < 60 && "Adding transitions..."}
+                            {assemblyProgress >= 60 && assemblyProgress < 90 && "Optimizing video..."}
+                            {assemblyProgress >= 90 && "Finalizing..."}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                  
+                  {assemblyStatus === 'completed' && assemblyId && (
+                    <div className="space-y-2">
+                      <Button 
+                        onClick={handleDownloadVideo}
+                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold shadow-lg"
+                        size="lg"
+                      >
+                        <Download className="w-5 h-5 mr-2" />
+                        Download Video
+                      </Button>
+                      <Button 
+                        onClick={() => setShowAssemblyDialog(true)}
+                        variant="outline"
+                        className="w-full border-primary/30 hover:bg-primary/5"
+                        size="lg"
+                      >
+                        <Settings className="w-5 h-5 mr-2" />
+                        Regenerate Video
+                      </Button>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -1256,11 +1532,191 @@ Be specific and actionable. Tell me what to reshoot vs what can be fixed in edit
               className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
             >
               <Clapperboard className="w-4 h-4 mr-2" />
-              Start Assembly
+              {assemblyStatus === 'completed' ? 'Regenerate Video' : 'Start Assembly'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Sora Generation Dialog */}
+      <Dialog open={showSoraDialog} onOpenChange={setShowSoraDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wand2 className="w-5 h-5 text-purple-500" />
+              Generate Video with Sora 2
+            </DialogTitle>
+            <DialogDescription>
+              AI will generate a video draft based on the shot's script and visual guide.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedShotForGen && (
+            <div className="space-y-4 py-4">
+              {/* Shot Info */}
+              <div className="p-4 bg-muted rounded-lg space-y-2">
+                <h4 className="font-semibold text-sm">
+                  {selectedShotForGen.shot.segment_name.replace('_', ' ')}
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  <strong>Script:</strong> {selectedShotForGen.shot.script.substring(0, 100)}...
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  <strong>Duration:</strong> {selectedShotForGen.shot.duration}s
+                </p>
+              </div>
+              
+              {/* Model Selection */}
+              <div className="space-y-2">
+                <Label htmlFor="model">Model Selection</Label>
+                <Select value={soraModel} onValueChange={setSoraModel}>
+                  <SelectTrigger id="model">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="sora-2">
+                      <div className="flex flex-col items-start">
+                        <span className="font-semibold">Sora 2</span>
+                        <span className="text-xs text-muted-foreground">Fast • Good quality • Cheaper</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="sora-2-pro">
+                      <div className="flex flex-col items-start">
+                        <span className="font-semibold">Sora 2 Pro</span>
+                        <span className="text-xs text-muted-foreground">Slower • High quality • Premium</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {soraModel === 'sora-2' 
+                    ? '⚡ Best for rapid iteration and social media content' 
+                    : '🎬 Best for production-quality marketing assets'}
+                </p>
+              </div>
+              
+              {/* Info box */}
+              <div className="p-3 bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+                <p className="text-xs text-purple-900 dark:text-purple-100">
+                  <strong>⏱️ Generation time:</strong> 2-5 minutes depending on model and server load
+                </p>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSoraDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={startSoraGeneration}
+              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+            >
+              <Wand2 className="w-4 h-4 mr-2" />
+              Generate Video
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Video Preview Dialog */}
+      <Dialog open={showVideoPreview} onOpenChange={setShowVideoPreview}>
+        <DialogContent className="sm:max-w-[800px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Video className="w-5 h-5 text-purple-500" />
+              Video Preview - {previewVideoData?.shot.segment_name.replace('_', ' ')}
+            </DialogTitle>
+            <DialogDescription>
+              {previewVideoData?.shot.generated_by_sora 
+                ? '✨ AI-generated video • You can use it, regenerate, or delete'
+                : 'Uploaded video footage'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {previewVideoData && (
+            <div className="space-y-4 py-4">
+              {/* Video Player */}
+              <div className="bg-black rounded-lg overflow-hidden aspect-video">
+                <video 
+                  key={previewVideoData.videoUrl}
+                  controls 
+                  autoPlay
+                  className="w-full h-full"
+                  src={previewVideoData.videoUrl}
+                >
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+              
+              {/* Shot Info */}
+              <div className="p-4 bg-muted rounded-lg space-y-2">
+                <p className="text-sm">
+                  <strong>Script:</strong> {previewVideoData.shot.script}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  <strong>Visual Guide:</strong> {previewVideoData.shot.visual_guide}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  <strong>Duration:</strong> {previewVideoData.shot.duration}s
+                </p>
+              </div>
+              
+              {/* Action Buttons for Generated Videos */}
+              {previewVideoData.shot.generated_by_sora && (
+                <div className="flex items-center justify-between p-4 bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-purple-900 dark:text-purple-100">
+                      How does it look?
+                    </p>
+                    <p className="text-xs text-purple-700 dark:text-purple-200">
+                      Use this video, regenerate with different settings, or delete and try again
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <DialogFooter className="gap-2">
+            {previewVideoData?.shot.generated_by_sora ? (
+              <>
+                <Button 
+                  variant="outline"
+                  onClick={() => handleDeleteDraft(previewVideoData.index)}
+                  className="text-red-600 hover:text-red-700"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Draft
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => handleRegenerateShot(previewVideoData.index)}
+                >
+                  <Wand2 className="w-4 h-4 mr-2" />
+                  Regenerate
+                </Button>
+                <Button 
+                  onClick={() => {
+                    setShowVideoPreview(false);
+                    toast.success('Video will be used in final assembly! ✨');
+                  }}
+                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Use This Video
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => setShowVideoPreview(false)}>
+                Close
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
     </div>
   );
 };

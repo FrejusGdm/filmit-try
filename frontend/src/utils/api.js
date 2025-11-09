@@ -317,3 +317,56 @@ export const reorderShots = async (projectId, shotList) => {
   });
   return response.json();
 };
+
+// ==================== Sora 2 Video Generation ====================
+
+// Generate shot with Sora 2
+export const generateShotWithSora = async (projectId, shotIndex, model = 'sora-2', size = '1280x720') => {
+  const response = await fetch(`${API_BASE_URL}/api/director/generate-shot`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      project_id: projectId,
+      shot_index: shotIndex,
+      model: model,
+      size: size
+    })
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to start video generation');
+  }
+  
+  return response.json();
+};
+
+// Check Sora generation status
+export const checkSoraStatus = async (jobId) => {
+  const response = await fetch(`${API_BASE_URL}/api/director/sora-status/${jobId}`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' }
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to check generation status');
+  }
+  
+  return response.json();
+};
+
+// Cancel Sora generation job
+export const cancelSoraJob = async (jobId) => {
+  const response = await fetch(`${API_BASE_URL}/api/director/sora-job/${jobId}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' }
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to cancel generation');
+  }
+  
+  return response.json();
+};

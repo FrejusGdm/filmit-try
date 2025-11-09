@@ -3,6 +3,7 @@ Director Agent Router - LangGraph-based video creation workflow
 """
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from motor.motor_asyncio import AsyncIOMotorDatabase, AsyncIOMotorClient
@@ -12,6 +13,10 @@ from pathlib import Path
 import uuid
 import shutil
 from datetime import datetime, timezone
+
+# Import auth dependencies
+from utils.auth_dependencies import get_current_user
+from schemas.user import UserResponse
 
 # Import Director workflow
 import sys
@@ -55,7 +60,10 @@ class DirectorResponse(BaseModel):
 
 
 @router.post("/project", response_model=DirectorResponse)
-async def create_director_project(input: DirectorProjectCreate):
+async def create_director_project(
+    input: DirectorProjectCreate,
+    current_user: UserResponse = Depends(get_current_user)
+):
     """Create a new video project with the Director workflow"""
     try:
         project_id = str(uuid.uuid4())
@@ -71,6 +79,7 @@ async def create_director_project(input: DirectorProjectCreate):
         initial_state: DirectorState = {
             "messages": [HumanMessage(content=input.user_goal)],
             "project_id": project_id,
+            "user_id": current_user.id,  # Save user ID
             "user_goal": input.user_goal,
             "product_type": input.product_type,
             "target_platform": input.target_platform,
@@ -105,7 +114,10 @@ async def create_director_project(input: DirectorProjectCreate):
 
 
 @router.post("/message", response_model=DirectorResponse)
-async def send_director_message(input: DirectorMessageInput):
+async def send_director_message(
+    input: DirectorMessageInput,
+    current_user: UserResponse = Depends(get_current_user)
+):
     """Send a message in an existing Director project"""
     try:
         api_key = os.environ.get('EMERGENT_LLM_KEY')
@@ -113,11 +125,14 @@ async def send_director_message(input: DirectorMessageInput):
         if not api_key:
             raise HTTPException(status_code=500, detail="EMERGENT_LLM_KEY not configured")
         
-        # Load project state from database
-        project = await db.video_projects.find_one({"project_id": input.project_id}, {"_id": 0})
+        # Load project state from database - verify ownership
+        project = await db.video_projects.find_one({
+            "project_id": input.project_id,
+            "user_id": current_user.id
+        }, {"_id": 0})
         
         if not project:
-            raise HTTPException(status_code=404, detail="Project not found")
+            raise HTTPException(status_code=404, detail="Project not found or access denied")
         
         # Initialize workflow
         workflow = DirectorWorkflow(db=db, api_key=api_key)
@@ -173,15 +188,37 @@ async def send_director_message(input: DirectorMessageInput):
 async def upload_video_segment(
     project_id: str,
     segment_name: str,
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    current_user: UserResponse = Depends(get_current_user)
 ):
-    """Upload a video segment for a project and trigger automatic analysis"""
+    """Upload a video segment for a project (replaces existing if present)"""
     try:
         # Create upload directory if it doesn't exist
         upload_dir = Path("/app/backend/uploads")
         upload_dir.mkdir(exist_ok=True)
         
-        # Save file
+        # Get project and verify ownership
+        project = await db.video_projects.find_one({
+            "project_id": project_id,
+            "user_id": current_user.id
+        }, {"_id": 0})
+        
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found or access denied")
+        
+        # Delete old file if it exists for this segment
+        if project and project.get("uploaded_segments"):
+            for seg in project["uploaded_segments"]:
+                if seg.get("segment_name") == segment_name:
+                    old_file_path = Path(seg.get("file_path", ""))
+                    if old_file_path.exists():
+                        try:
+                            old_file_path.unlink()
+                            logger.info(f"Deleted old file for segment {segment_name}: {old_file_path}")
+                        except Exception as e:
+                            logger.warning(f"Could not delete old file {old_file_path}: {e}")
+        
+        # Save new file
         file_path = upload_dir / f"{project_id}_{segment_name}_{file.filename}"
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
@@ -202,12 +239,21 @@ async def upload_video_segment(
             raise HTTPException(status_code=404, detail=f"Segment '{segment_name}' not found in shot list")
         
         # Update segment data
+        # Update project in database - remove old segment and add new one
         segment_data = {
             "segment_name": segment_name,
             "file_path": str(file_path),
             "filename": file.filename,
             "uploaded_at": datetime.now(timezone.utc).isoformat()
         }
+        
+        # Remove any existing segment with same name, then add the new one
+        await db.video_projects.update_one(
+            {"project_id": project_id},
+            {
+                "$pull": {"uploaded_segments": {"segment_name": segment_name}}
+            }
+        )
         
         await db.video_projects.update_one(
             {"project_id": project_id},
@@ -288,12 +334,36 @@ async def upload_video_segment(
 
 
 @router.get("/project/{project_id}")
-async def get_director_project(project_id: str):
-    """Get project details"""
-    project = await db.video_projects.find_one({"project_id": project_id}, {"_id": 0})
+async def get_director_project(
+    project_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get project details - returns user's own projects or migrates old projects"""
+    # Try to find project with user_id
+    project = await db.video_projects.find_one({
+        "project_id": project_id,
+        "user_id": current_user.id
+    }, {"_id": 0})
+    
+    # If not found, check for old project without user_id (migration)
+    if not project:
+        old_project = await db.video_projects.find_one({
+            "project_id": project_id,
+            "user_id": {"$exists": False}
+        }, {"_id": 0})
+        
+        if old_project:
+            # Migrate: add current user as owner
+            await db.video_projects.update_one(
+                {"project_id": project_id},
+                {"$set": {"user_id": current_user.id}}
+            )
+            old_project["user_id"] = current_user.id
+            logger.info(f"Migrated project {project_id} to user {current_user.id}")
+            return old_project
     
     if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+        raise HTTPException(status_code=404, detail="Project not found or access denied")
     
     return project
 
@@ -698,4 +768,265 @@ async def reorder_shots(input: ShotReorder):
         raise
     except Exception as e:
         logger.error(f"Error reordering shots: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+# ==================== Sora 2 Video Generation ====================
+
+from services.sora_service import sora_service
+from fastapi import BackgroundTasks
+
+
+class SoraGenerateRequest(BaseModel):
+    """Request model for Sora video generation"""
+    project_id: str
+    shot_index: int
+    model: str = Field(default="sora-2", description="sora-2 or sora-2-pro")
+    size: str = Field(default="1280x720", description="Video resolution")
+
+
+class SoraStatusResponse(BaseModel):
+    """Response model for Sora generation status"""
+    video_id: str
+    status: str  # queued, in_progress, completed, failed
+    progress: int  # 0-100
+    file_path: Optional[str] = None
+    error: Optional[str] = None
+
+
+@router.post("/generate-shot")
+async def generate_shot_with_sora(
+    input: SoraGenerateRequest,
+    background_tasks: BackgroundTasks
+):
+    """
+    Generate a video shot using Sora 2 API
+    
+    This initiates an async video generation job. Use the returned job_id
+    to check status with the /sora-status/{job_id} endpoint.
+    """
+    try:
+        # Get project and shot details
+        project = await db.video_projects.find_one(
+            {"project_id": input.project_id},
+            {"_id": 0}
+        )
+        
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        shot_list = project.get("shot_list", [])
+        
+        if input.shot_index < 0 or input.shot_index >= len(shot_list):
+            raise HTTPException(status_code=400, detail="Invalid shot index")
+        
+        shot = shot_list[input.shot_index]
+        
+        # Validate model choice
+        if input.model not in ["sora-2", "sora-2-pro"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Model must be 'sora-2' or 'sora-2-pro'"
+            )
+        
+        logger.info(f"Starting Sora generation for project {input.project_id}, shot: {shot['segment_name']}")
+        
+        # Start video generation (non-blocking)
+        result = await sora_service.generate_video(
+            prompt=shot.get("script", ""),
+            visual_description=shot.get("visual_guide", ""),
+            duration=shot.get("duration", 5),
+            segment_name=shot.get("segment_name", "shot"),
+            project_id=input.project_id,
+            size=input.size,
+            model=input.model
+        )
+        
+        # Store job info in database for tracking
+        job_id = result["video_id"]
+        await db.sora_jobs.insert_one({
+            "job_id": job_id,
+            "project_id": input.project_id,
+            "shot_index": input.shot_index,
+            "segment_name": shot["segment_name"],
+            "status": result["status"],
+            "progress": result.get("progress", 0),
+            "model": input.model,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "video_id": result["video_id"]
+        })
+        
+        return {
+            "success": True,
+            "job_id": job_id,
+            "status": result["status"],
+            "progress": result.get("progress", 0),
+            "message": f"Video generation started for {shot['segment_name']}"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error starting Sora generation: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/sora-status/{job_id}")
+async def check_sora_status(job_id: str):
+    """
+    Check the status of a Sora video generation job
+    
+    Returns current status, progress (0-100), and file path when completed.
+    """
+    try:
+        # Get job from database
+        job = await db.sora_jobs.find_one({"job_id": job_id}, {"_id": 0})
+        
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+        
+        # Check current status from Sora API
+        status_result = await sora_service.check_video_status(job_id)
+        
+        # Update database with latest status
+        await db.sora_jobs.update_one(
+            {"job_id": job_id},
+            {
+                "$set": {
+                    "status": status_result["status"],
+                    "progress": status_result.get("progress", 0),
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
+            }
+        )
+        
+        response = {
+            "job_id": job_id,
+            "status": status_result["status"],
+            "progress": status_result.get("progress", 0),
+            "project_id": job["project_id"],
+            "segment_name": job["segment_name"]
+        }
+        
+        # If completed, download the video
+        if status_result["status"] == "completed" and not job.get("file_path"):
+            try:
+                file_path = await sora_service.download_completed_video(
+                    video_id=job_id,
+                    project_id=job["project_id"],
+                    segment_name=job["segment_name"]
+                )
+                
+                # Update database with file path
+                await db.sora_jobs.update_one(
+                    {"job_id": job_id},
+                    {"$set": {"file_path": file_path}}
+                )
+                
+                # Update shot list to mark as uploaded
+                project = await db.video_projects.find_one(
+                    {"project_id": job["project_id"]},
+                    {"_id": 0}
+                )
+                
+                if project:
+                    shot_list = project.get("shot_list", [])
+                    shot_index = job["shot_index"]
+                    
+                    if 0 <= shot_index < len(shot_list):
+                        shot_list[shot_index]["uploaded"] = True
+                        shot_list[shot_index]["file_path"] = file_path
+                        shot_list[shot_index]["generated_by_sora"] = True
+                        
+                        await db.video_projects.update_one(
+                            {"project_id": job["project_id"]},
+                            {"$set": {"shot_list": shot_list}}
+                        )
+                
+                response["file_path"] = file_path
+                response["success"] = True
+                
+            except Exception as e:
+                logger.error(f"Error downloading completed video: {str(e)}")
+                response["error"] = str(e)
+        
+        elif status_result["status"] == "failed":
+            error_msg = status_result.get("error", "Unknown error")
+            response["error"] = error_msg
+            response["success"] = False
+            
+            # Update database with error
+            await db.sora_jobs.update_one(
+                {"job_id": job_id},
+                {"$set": {"error": error_msg}}
+            )
+        
+        return response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error checking Sora status: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/sora-job/{job_id}")
+async def cancel_sora_job(job_id: str):
+    """
+    Cancel/delete a Sora generation job
+    
+    Note: Sora API doesn't support cancellation once started,
+    but we can remove it from our tracking.
+    """
+    try:
+        result = await db.sora_jobs.delete_one({"job_id": job_id})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Job not found")
+        
+        return {
+            "success": True,
+            "message": "Job removed from tracking"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting Sora job: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+@router.get("/video-preview/{project_id}/{filename}")
+async def serve_video_preview(project_id: str, filename: str):
+    """
+    Serve generated video files for preview
+    
+    This endpoint serves video files from the uploads directory
+    for preview in the frontend.
+    """
+    try:
+        # Construct file path
+        uploads_dir = Path(__file__).parent.parent / 'uploads'
+        file_path = uploads_dir / filename
+        
+        # Security check: ensure file is in uploads directory
+        if not file_path.is_relative_to(uploads_dir):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="Video file not found")
+        
+        # Return video file
+        return FileResponse(
+            path=str(file_path),
+            media_type="video/mp4",
+            filename=filename
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error serving video preview: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
