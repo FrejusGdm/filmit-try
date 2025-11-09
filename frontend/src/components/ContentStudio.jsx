@@ -1519,6 +1519,104 @@ export const ContentStudio = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Video Preview Dialog */}
+      <Dialog open={showVideoPreview} onOpenChange={setShowVideoPreview}>
+        <DialogContent className="sm:max-w-[800px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Video className="w-5 h-5 text-purple-500" />
+              Video Preview - {previewVideoData?.shot.segment_name.replace('_', ' ')}
+            </DialogTitle>
+            <DialogDescription>
+              {previewVideoData?.shot.generated_by_sora 
+                ? '✨ AI-generated video • You can use it, regenerate, or delete'
+                : 'Uploaded video footage'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {previewVideoData && (
+            <div className="space-y-4 py-4">
+              {/* Video Player */}
+              <div className="bg-black rounded-lg overflow-hidden aspect-video">
+                <video 
+                  key={previewVideoData.videoUrl}
+                  controls 
+                  autoPlay
+                  className="w-full h-full"
+                  src={previewVideoData.videoUrl}
+                >
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+              
+              {/* Shot Info */}
+              <div className="p-4 bg-muted rounded-lg space-y-2">
+                <p className="text-sm">
+                  <strong>Script:</strong> {previewVideoData.shot.script}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  <strong>Visual Guide:</strong> {previewVideoData.shot.visual_guide}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  <strong>Duration:</strong> {previewVideoData.shot.duration}s
+                </p>
+              </div>
+              
+              {/* Action Buttons for Generated Videos */}
+              {previewVideoData.shot.generated_by_sora && (
+                <div className="flex items-center justify-between p-4 bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-purple-900 dark:text-purple-100">
+                      How does it look?
+                    </p>
+                    <p className="text-xs text-purple-700 dark:text-purple-200">
+                      Use this video, regenerate with different settings, or delete and try again
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <DialogFooter className="gap-2">
+            {previewVideoData?.shot.generated_by_sora ? (
+              <>
+                <Button 
+                  variant="outline"
+                  onClick={() => handleDeleteDraft(previewVideoData.index)}
+                  className="text-red-600 hover:text-red-700"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Draft
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => handleRegenerateShot(previewVideoData.index)}
+                >
+                  <Wand2 className="w-4 h-4 mr-2" />
+                  Regenerate
+                </Button>
+                <Button 
+                  onClick={() => {
+                    setShowVideoPreview(false);
+                    toast.success('Video will be used in final assembly! ✨');
+                  }}
+                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Use This Video
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => setShowVideoPreview(false)}>
+                Close
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
     </div>
   );
 };
