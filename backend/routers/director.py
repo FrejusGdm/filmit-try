@@ -586,3 +586,229 @@ async def reorder_shots(input: ShotReorder):
     except Exception as e:
         logger.error(f"Error reordering shots: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+# ==================== Sora 2 Video Generation ====================
+
+from services.sora_service import sora_service
+from fastapi import BackgroundTasks
+
+
+class SoraGenerateRequest(BaseModel):
+    """Request model for Sora video generation"""
+    project_id: str
+    shot_index: int
+    model: str = Field(default="sora-2", description="sora-2 or sora-2-pro")
+    size: str = Field(default="1280x720", description="Video resolution")
+
+
+class SoraStatusResponse(BaseModel):
+    """Response model for Sora generation status"""
+    video_id: str
+    status: str  # queued, in_progress, completed, failed
+    progress: int  # 0-100
+    file_path: Optional[str] = None
+    error: Optional[str] = None
+
+
+@router.post("/generate-shot")
+async def generate_shot_with_sora(
+    input: SoraGenerateRequest,
+    background_tasks: BackgroundTasks
+):
+    """
+    Generate a video shot using Sora 2 API
+    
+    This initiates an async video generation job. Use the returned job_id
+    to check status with the /sora-status/{job_id} endpoint.
+    """
+    try:
+        # Get project and shot details
+        project = await db.video_projects.find_one(
+            {"project_id": input.project_id},
+            {"_id": 0}
+        )
+        
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        shot_list = project.get("shot_list", [])
+        
+        if input.shot_index < 0 or input.shot_index >= len(shot_list):
+            raise HTTPException(status_code=400, detail="Invalid shot index")
+        
+        shot = shot_list[input.shot_index]
+        
+        # Validate model choice
+        if input.model not in ["sora-2", "sora-2-pro"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Model must be 'sora-2' or 'sora-2-pro'"
+            )
+        
+        logger.info(f"Starting Sora generation for project {input.project_id}, shot: {shot['segment_name']}")
+        
+        # Start video generation (non-blocking)
+        result = await sora_service.generate_video(
+            prompt=shot.get("script", ""),
+            visual_description=shot.get("visual_guide", ""),
+            duration=shot.get("duration", 5),
+            segment_name=shot.get("segment_name", "shot"),
+            project_id=input.project_id,
+            size=input.size,
+            model=input.model
+        )
+        
+        # Store job info in database for tracking
+        job_id = result["video_id"]
+        await db.sora_jobs.insert_one({
+            "job_id": job_id,
+            "project_id": input.project_id,
+            "shot_index": input.shot_index,
+            "segment_name": shot["segment_name"],
+            "status": result["status"],
+            "progress": result.get("progress", 0),
+            "model": input.model,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "video_id": result["video_id"]
+        })
+        
+        return {
+            "success": True,
+            "job_id": job_id,
+            "status": result["status"],
+            "progress": result.get("progress", 0),
+            "message": f"Video generation started for {shot['segment_name']}"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error starting Sora generation: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/sora-status/{job_id}")
+async def check_sora_status(job_id: str):
+    """
+    Check the status of a Sora video generation job
+    
+    Returns current status, progress (0-100), and file path when completed.
+    """
+    try:
+        # Get job from database
+        job = await db.sora_jobs.find_one({"job_id": job_id}, {"_id": 0})
+        
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+        
+        # Check current status from Sora API
+        status_result = await sora_service.check_video_status(job_id)
+        
+        # Update database with latest status
+        await db.sora_jobs.update_one(
+            {"job_id": job_id},
+            {
+                "$set": {
+                    "status": status_result["status"],
+                    "progress": status_result.get("progress", 0),
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
+            }
+        )
+        
+        response = {
+            "job_id": job_id,
+            "status": status_result["status"],
+            "progress": status_result.get("progress", 0),
+            "project_id": job["project_id"],
+            "segment_name": job["segment_name"]
+        }
+        
+        # If completed, download the video
+        if status_result["status"] == "completed" and not job.get("file_path"):
+            try:
+                file_path = await sora_service.download_completed_video(
+                    video_id=job_id,
+                    project_id=job["project_id"],
+                    segment_name=job["segment_name"]
+                )
+                
+                # Update database with file path
+                await db.sora_jobs.update_one(
+                    {"job_id": job_id},
+                    {"$set": {"file_path": file_path}}
+                )
+                
+                # Update shot list to mark as uploaded
+                project = await db.video_projects.find_one(
+                    {"project_id": job["project_id"]},
+                    {"_id": 0}
+                )
+                
+                if project:
+                    shot_list = project.get("shot_list", [])
+                    shot_index = job["shot_index"]
+                    
+                    if 0 <= shot_index < len(shot_list):
+                        shot_list[shot_index]["uploaded"] = True
+                        shot_list[shot_index]["file_path"] = file_path
+                        shot_list[shot_index]["generated_by_sora"] = True
+                        
+                        await db.video_projects.update_one(
+                            {"project_id": job["project_id"]},
+                            {"$set": {"shot_list": shot_list}}
+                        )
+                
+                response["file_path"] = file_path
+                response["success"] = True
+                
+            except Exception as e:
+                logger.error(f"Error downloading completed video: {str(e)}")
+                response["error"] = str(e)
+        
+        elif status_result["status"] == "failed":
+            error_msg = status_result.get("error", "Unknown error")
+            response["error"] = error_msg
+            response["success"] = False
+            
+            # Update database with error
+            await db.sora_jobs.update_one(
+                {"job_id": job_id},
+                {"$set": {"error": error_msg}}
+            )
+        
+        return response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error checking Sora status: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/sora-job/{job_id}")
+async def cancel_sora_job(job_id: str):
+    """
+    Cancel/delete a Sora generation job
+    
+    Note: Sora API doesn't support cancellation once started,
+    but we can remove it from our tracking.
+    """
+    try:
+        result = await db.sora_jobs.delete_one({"job_id": job_id})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Job not found")
+        
+        return {
+            "success": True,
+            "message": "Job removed from tracking"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting Sora job: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
