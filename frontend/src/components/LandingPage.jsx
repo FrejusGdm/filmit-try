@@ -118,17 +118,9 @@ export const LandingPage = () => {
               >
                 🎬 Start with AI Director
               </button>
-              
-              <button 
-                onClick={() => navigate('/director?testmode=true')}
-                className="px-8 py-4 rounded-xl bg-yellow-500 text-black border-2 border-yellow-600 transition-all duration-300 shadow-md hover:shadow-lg font-semibold"
-              >
-                ⚡ Test Mode (Skip Auth)
-              </button>
             </div>
             <p className="text-sm text-muted-foreground font-sans">
-              ✨ Try Director Mode for step-by-step video creation guidance<br/>
-              <span className="text-yellow-600 dark:text-yellow-500">⚡ Use Test Mode to skip login and try Sora video generation instantly</span>
+              ✨ Try Director Mode for step-by-step video creation guidance
             </p>
 
             {/* Social Proof */}

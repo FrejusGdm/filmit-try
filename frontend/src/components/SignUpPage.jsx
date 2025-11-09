@@ -225,17 +225,6 @@ export const SignUpPage = () => {
                 </form>
               </CardContent>
               <CardFooter className="flex flex-col space-y-4">
-                {/* Skip Auth for Testing Button */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full border-yellow-500 text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-950/20"
-                  onClick={() => navigate('/director?testmode=true')}
-                >
-                  <Zap className="w-4 h-4 mr-2" />
-                  Skip Auth for Testing
-                </Button>
-                
                 <div className="text-sm text-center text-muted-foreground">
                   Already have an account?{' '}
                   <button 
