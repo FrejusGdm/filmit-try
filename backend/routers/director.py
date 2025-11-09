@@ -14,6 +14,10 @@ import uuid
 import shutil
 from datetime import datetime, timezone
 
+# Import auth dependencies
+from utils.auth_dependencies import get_current_user
+from schemas.user import UserResponse
+
 # Import Director workflow
 import sys
 sys.path.append(str(Path(__file__).parent.parent / "agents"))
@@ -55,7 +59,10 @@ class DirectorResponse(BaseModel):
 
 
 @router.post("/project", response_model=DirectorResponse)
-async def create_director_project(input: DirectorProjectCreate):
+async def create_director_project(
+    input: DirectorProjectCreate,
+    current_user: UserResponse = Depends(get_current_user)
+):
     """Create a new video project with the Director workflow"""
     try:
         project_id = str(uuid.uuid4())
@@ -71,6 +78,7 @@ async def create_director_project(input: DirectorProjectCreate):
         initial_state: DirectorState = {
             "messages": [HumanMessage(content=input.user_goal)],
             "project_id": project_id,
+            "user_id": current_user.id,  # Save user ID
             "user_goal": input.user_goal,
             "product_type": input.product_type,
             "target_platform": input.target_platform,
@@ -105,7 +113,10 @@ async def create_director_project(input: DirectorProjectCreate):
 
 
 @router.post("/message", response_model=DirectorResponse)
-async def send_director_message(input: DirectorMessageInput):
+async def send_director_message(
+    input: DirectorMessageInput,
+    current_user: UserResponse = Depends(get_current_user)
+):
     """Send a message in an existing Director project"""
     try:
         api_key = os.environ.get('EMERGENT_LLM_KEY')
@@ -113,11 +124,14 @@ async def send_director_message(input: DirectorMessageInput):
         if not api_key:
             raise HTTPException(status_code=500, detail="EMERGENT_LLM_KEY not configured")
         
-        # Load project state from database
-        project = await db.video_projects.find_one({"project_id": input.project_id}, {"_id": 0})
+        # Load project state from database - verify ownership
+        project = await db.video_projects.find_one({
+            "project_id": input.project_id,
+            "user_id": current_user.id
+        }, {"_id": 0})
         
         if not project:
-            raise HTTPException(status_code=404, detail="Project not found")
+            raise HTTPException(status_code=404, detail="Project not found or access denied")
         
         # Initialize workflow
         workflow = DirectorWorkflow(db=db, api_key=api_key)
@@ -173,26 +187,56 @@ async def send_director_message(input: DirectorMessageInput):
 async def upload_video_segment(
     project_id: str,
     segment_name: str,
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    current_user: UserResponse = Depends(get_current_user)
 ):
-    """Upload a video segment for a project"""
+    """Upload a video segment for a project (replaces existing if present)"""
     try:
         # Create upload directory if it doesn't exist
         upload_dir = Path("/app/backend/uploads")
         upload_dir.mkdir(exist_ok=True)
         
-        # Save file
+        # Get project and verify ownership
+        project = await db.video_projects.find_one({
+            "project_id": project_id,
+            "user_id": current_user.id
+        }, {"_id": 0})
+        
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found or access denied")
+        
+        # Delete old file if it exists for this segment
+        if project and project.get("uploaded_segments"):
+            for seg in project["uploaded_segments"]:
+                if seg.get("segment_name") == segment_name:
+                    old_file_path = Path(seg.get("file_path", ""))
+                    if old_file_path.exists():
+                        try:
+                            old_file_path.unlink()
+                            logger.info(f"Deleted old file for segment {segment_name}: {old_file_path}")
+                        except Exception as e:
+                            logger.warning(f"Could not delete old file {old_file_path}: {e}")
+        
+        # Save new file
         file_path = upload_dir / f"{project_id}_{segment_name}_{file.filename}"
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
-        # Update project in database
+        # Update project in database - remove old segment and add new one
         segment_data = {
             "segment_name": segment_name,
             "file_path": str(file_path),
             "filename": file.filename,
             "uploaded_at": datetime.now(timezone.utc).isoformat()
         }
+        
+        # Remove any existing segment with same name, then add the new one
+        await db.video_projects.update_one(
+            {"project_id": project_id},
+            {
+                "$pull": {"uploaded_segments": {"segment_name": segment_name}}
+            }
+        )
         
         await db.video_projects.update_one(
             {"project_id": project_id},
@@ -226,12 +270,36 @@ async def upload_video_segment(
 
 
 @router.get("/project/{project_id}")
-async def get_director_project(project_id: str):
-    """Get project details"""
-    project = await db.video_projects.find_one({"project_id": project_id}, {"_id": 0})
+async def get_director_project(
+    project_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get project details - returns user's own projects or migrates old projects"""
+    # Try to find project with user_id
+    project = await db.video_projects.find_one({
+        "project_id": project_id,
+        "user_id": current_user.id
+    }, {"_id": 0})
+    
+    # If not found, check for old project without user_id (migration)
+    if not project:
+        old_project = await db.video_projects.find_one({
+            "project_id": project_id,
+            "user_id": {"$exists": False}
+        }, {"_id": 0})
+        
+        if old_project:
+            # Migrate: add current user as owner
+            await db.video_projects.update_one(
+                {"project_id": project_id},
+                {"$set": {"user_id": current_user.id}}
+            )
+            old_project["user_id"] = current_user.id
+            logger.info(f"Migrated project {project_id} to user {current_user.id}")
+            return old_project
     
     if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+        raise HTTPException(status_code=404, detail="Project not found or access denied")
     
     return project
 
