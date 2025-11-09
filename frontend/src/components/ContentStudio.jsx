@@ -166,8 +166,17 @@ const SortableShotCard = ({ shot, index, projectId, onUpdate, onDelete, uploadin
                     className="text-sm font-semibold mb-2"
                   />
                 ) : (
-                  <h4 className="font-semibold text-sm text-foreground capitalize">
-                    {shot.segment_name.replace('_', ' ')}
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-semibold text-sm text-foreground capitalize">
+                      {shot.segment_name.replace('_', ' ')}
+                    </h4>
+                    {shot.generated_by_sora && (
+                      <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs">
+                        ✨ AI Generated
+                      </Badge>
+                    )}
+                  </div>
+                )}
                   </h4>
                 )}
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
