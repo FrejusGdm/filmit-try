@@ -1110,6 +1110,10 @@ export const ContentStudio = () => {
                 </DndContext>
               )}
             </div>
+
+            {/* Music Section */}
+            {projectId && <MusicSection projectId={projectId} />}
+
           </div>
         </div>
 
