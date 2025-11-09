@@ -564,13 +564,14 @@ frontend:
 
 metadata:
   created_by: "main_agent"
-  version: "3.1"
-  test_sequence: 5
+  version: "3.2"
+  test_sequence: 6
   run_ui: false
   last_tested: "2025-11-09"
 
 test_plan:
   current_focus:
+    - "ElevenLabs Music Generation Integration"
     - "Workspace - Video Upload Integration"
     - "Workspace - AI Analysis Integration"
     - "Workspace - Suggestions Display & Actions"
