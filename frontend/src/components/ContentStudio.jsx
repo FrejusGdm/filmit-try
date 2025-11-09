@@ -1014,12 +1014,22 @@ Ask me for detailed feedback anytime!`;
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      setInputValue("Can you review all my uploaded shots?");
+                      const uploadedShots = shotList.filter(s => s.uploaded);
+                      const comprehensivePrompt = `Give me detailed feedback on all my uploaded shots. For each shot, prioritize:
+
+1. CRITICAL ISSUES that would prevent the video from going viral (hook effectiveness, pacing problems, technical failures)
+2. HIGH-IMPACT IMPROVEMENTS that would significantly boost engagement (first 3 seconds, energy level, visual quality)
+3. QUICK WINS that are easy to fix (lighting, framing, background distractions)
+
+Uploaded shots: ${uploadedShots.map(s => s.segment_name.replace(/_/g, ' ')).join(', ')}
+
+Be specific and actionable. Tell me what to reshoot vs what can be fixed in editing. Focus on the most important changes first.`;
+                      setInputValue(comprehensivePrompt);
                       textareaRef.current?.focus();
                     }}
                     className="text-xs"
                   >
-                    ✨ Review Uploads
+                    🎯 Get Feedback
                   </Button>
                 )}
               </div>
