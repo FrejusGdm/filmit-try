@@ -61,8 +61,13 @@ class SoraService:
             # Combine prompt and visual description for best results
             full_prompt = self._create_full_prompt(prompt, visual_description)
             
-            # Cap duration at Sora's max (20 seconds)
-            duration = min(duration, 20)
+            # Round to valid Sora durations: 4, 8, or 12 seconds
+            if duration <= 4:
+                duration = 4
+            elif duration <= 8:
+                duration = 8
+            else:
+                duration = 12  # Sora max is 12 seconds for now
             
             logger.info(f"Creating Sora video generation job: {segment_name}")
             logger.info(f"Model: {model}, Size: {size}, Duration: {duration}s")
