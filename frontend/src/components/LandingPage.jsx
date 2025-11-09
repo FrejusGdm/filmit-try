@@ -79,7 +79,7 @@ export const LandingPage = () => {
             <div className="flex items-center gap-4">
               <button 
                 onClick={() => navigate('/login')} 
-                className="font-sans text-base text-muted-foreground hover:text-foreground transition-colors"
+                className="font-display text-[1.1em] font-semibold text-muted-foreground hover:text-foreground transition-colors"
               >
                 Sign In
               </button>
@@ -118,9 +118,17 @@ export const LandingPage = () => {
               >
                 🎬 Start with AI Director
               </button>
+              
+              <button 
+                onClick={() => navigate('/director?testmode=true')}
+                className="px-8 py-4 rounded-xl bg-yellow-500 text-black border-2 border-yellow-600 transition-all duration-300 shadow-md hover:shadow-lg font-semibold"
+              >
+                ⚡ Test Mode (Skip Auth)
+              </button>
             </div>
             <p className="text-sm text-muted-foreground font-sans">
-              ✨ Try Director Mode for step-by-step video creation guidance
+              ✨ Try Director Mode for step-by-step video creation guidance<br/>
+              <span className="text-yellow-600 dark:text-yellow-500">⚡ Use Test Mode to skip login and try Sora video generation instantly</span>
             </p>
 
             {/* Social Proof */}
