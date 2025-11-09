@@ -487,9 +487,40 @@ export const ContentStudio = () => {
 
     setUploadingSegment(segment.segment_name);
     try {
-      await uploadDirectorSegment(projectId, segment.segment_name, file);
+      // Upload the segment (this now triggers automatic analysis on the backend)
+      const uploadResult = await uploadDirectorSegment(projectId, segment.segment_name, file);
       
-      toast.success(`${segment.segment_name} uploaded successfully!`);
+      // Check if analysis is available
+      if (uploadResult.analysis_available) {
+        const analysis = uploadResult.analysis_summary;
+        
+        // Show analysis results in toast
+        toast.success(
+          `${segment.segment_name} uploaded & analyzed!`,
+          {
+            description: `Score: ${analysis.overall_score}/10 | Viral Potential: ${analysis.viral_potential}`,
+            duration: 5000,
+          }
+        );
+        
+        // Add a message from the Director about the analysis
+        const analysisMessage = `✅ **${segment.segment_name.replace(/_/g, ' ').toUpperCase()} Analyzed!**
+        
+Score: ${analysis.overall_score}/10
+Viral Potential: ${analysis.viral_potential}
+${analysis.ready_for_assembly ? '✅ Ready for assembly' : '⚠️ May need adjustments'}
+
+Ask me for detailed feedback anytime!`;
+        
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: analysisMessage,
+          timestamp: new Date().toISOString()
+        }]);
+        
+      } else {
+        toast.success(`${segment.segment_name} uploaded successfully!`);
+      }
       
       // Update shot list
       setShotList(prev => prev.map(s => 
@@ -498,7 +529,7 @@ export const ContentStudio = () => {
           : s
       ));
       
-      // Reload project to get latest state
+      // Reload project to get latest state with analysis
       await loadProject();
       
     } catch (error) {
