@@ -205,8 +205,18 @@ Respond ONLY with JSON:
         """Handle user request for feedback on uploaded content"""
         segment_name = intent.get("segment", "")
         shot_list = state.get("shot_list", [])
+        user_message = state.get("messages", [])[-1].content if state.get("messages") else ""
         
-        # Find the shot they're asking about
+        # Check if user is asking for feedback on ALL shots
+        is_comprehensive_review = any(keyword in user_message.lower() for keyword in [
+            "all shots", "all my shots", "all uploaded", "every shot", "each shot",
+            "critical issues", "high-impact", "prioritize"
+        ])
+        
+        if is_comprehensive_review:
+            return await self._handle_comprehensive_feedback(shot_list)
+        
+        # Find the shot they're asking about (single shot feedback)
         target_shot = None
         if segment_name:
             target_shot = next((s for s in shot_list if segment_name.lower() in s["segment_name"].lower()), None)
