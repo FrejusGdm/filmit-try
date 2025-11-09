@@ -8,7 +8,7 @@ import { Input } from './ui/input';
 import { 
   Sparkles, Upload, X, Send, Video, CheckCircle, XCircle, 
   Film, Loader2, User, Clock, ChevronLeft, FolderOpen, Clapperboard,
-  Download, Settings, Edit2, Trash2, Save, Plus, GripVertical
+  Download, Settings, Edit2, Trash2, Save, Plus, GripVertical, Wand2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate, useParams } from 'react-router-dom';
