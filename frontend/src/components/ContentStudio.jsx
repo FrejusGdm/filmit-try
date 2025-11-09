@@ -1082,6 +1082,7 @@ export const ContentStudio = () => {
                           handleFeedback={handleFeedback}
                           handleGenerateShot={handleGenerateShot}
                           generatingStatus={generatingShots[index]}
+                          handlePreviewVideo={handlePreviewVideo}
                         />
                       ))}
                     </div>
