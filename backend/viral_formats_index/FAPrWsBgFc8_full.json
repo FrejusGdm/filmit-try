@@ -1,0 +1,113 @@
+{
+  "format_name": "Disruptive App Explainer",
+  "format_description": "This video format involves the introduction and promotion of a ground-breaking app. The use of a catchy title and potential uses of the app are emphasized to generate curiosity and engagement.",
+  "video_structure": [
+    {
+      "segment": "intro",
+      "timestamp": "0:00-0:05",
+      "description": "Likely begins with a captivating introduction about the app",
+      "duration_seconds": 5
+    },
+    {
+      "segment": "problem",
+      "timestamp": "0:06-2:00",
+      "description": "Shares common problems that the app can help solve",
+      "duration_seconds": 114
+    },
+    {
+      "segment": "solution",
+      "timestamp": "2:01-7:00",
+      "description": "Explains how the app provides solutions to these problems",
+      "duration_seconds": 300
+    },
+    {
+      "segment": "demo",
+      "timestamp": "7:01-14:00",
+      "description": "Gives a comprehensive demo of using the app",
+      "duration_seconds": 420
+    },
+    {
+      "segment": "cta",
+      "timestamp": "14:01-17:01",
+      "description": "Ends with a call to action, such as downloading the app or visiting their website",
+      "duration_seconds": 180
+    }
+  ],
+  "editing_patterns": {
+    "pacing": "medium",
+    "cuts_per_minute": "estimated 10-15",
+    "transition_style": "straight cuts with occasional fades",
+    "visual_style": "Silhouette of the App interface, possibly a talking head"
+  },
+  "engagement_tactics": [
+    "Utilizes curiosity and need for efficiency",
+    "Potential use of humor",
+    "Visuals aids of app features",
+    "Music choices",
+    "social proof from users"
+  ],
+  "hook_strategy": "The video likely grabs attention by stating how the app can 'cheat' on everything, implying it can make life easier.",
+  "platform_fit": [
+    "YouTube"
+  ],
+  "content_type": "tutorial/demo",
+  "target_audience": "Tech-savvy users, anyone who values efficiency",
+  "viral_elements": [
+    "Relatability of wanting to make life easier",
+    "Novelty of AI in everyday use",
+    "Potential humor in script"
+  ],
+  "success_metrics": {
+    "view_to_like_ratio": 50.43,
+    "engagement_rate": "To be calculated from available metrics",
+    "viral_score": "0-100 based on performance"
+  },
+  "key_takeaways": [
+    "Strong and enticing introduction is necessary",
+    "Demonstration of the app in use is crucial",
+    "Potential use of humor is recommended"
+  ],
+  "video_id": "FAPrWsBgFc8",
+  "video_url": "https://www.youtube.com/watch?v=FAPrWsBgFc8",
+  "analyzed_at": "2025-11-09T08:08:20.146549+00:00",
+  "source_metadata": {
+    "video_id": "FAPrWsBgFc8",
+    "title": "Cluely: the AI App to Cheat On Everything - Roy Lee",
+    "description": "TBPN.com is made possible by:\nRamp - https://ramp.com/\nFigma - https://figma.com/\nVanta - https://vanta.com/\nLinear - https://linear.app/\nEight Sleep - https://eightsleep.com/tbpn\nWander - https://wander.com/tbpn\nPublic - https://public.com/\nAdQuick - https://adquick.com/\nBezel - https://getbezel.com/ \nNumeral - https://www.numeralhq.com/\nPolymarket - https://polymarket.com/\nAttio - https://attio.com/\nFin - https://fin.ai/\n\nFollow TBPN: \nhttps://tbpn.com/\nhttps://x.com/tbpn\nhttps://open.spotify.com/show/2L6WMqY3GUPCGBD0dX6p00?si=674252d53acf4231\nhttps://podcasts.apple.com/us/podcast/technology-brothers/id1772360235\nhttps://youtube.com/@technologybrotherspod?si=lpk53xTE9WBEcIjV",
+    "channel_title": "TBPN",
+    "published_at": "2025-04-25T23:41:57Z",
+    "duration": "PT17M1S",
+    "tags": [],
+    "view_count": 15885,
+    "like_count": 314,
+    "comment_count": 30,
+    "thumbnails": {
+      "default": {
+        "url": "https://i.ytimg.com/vi/FAPrWsBgFc8/default.jpg",
+        "width": 120,
+        "height": 90
+      },
+      "medium": {
+        "url": "https://i.ytimg.com/vi/FAPrWsBgFc8/mqdefault.jpg",
+        "width": 320,
+        "height": 180
+      },
+      "high": {
+        "url": "https://i.ytimg.com/vi/FAPrWsBgFc8/hqdefault.jpg",
+        "width": 480,
+        "height": 360
+      },
+      "standard": {
+        "url": "https://i.ytimg.com/vi/FAPrWsBgFc8/sddefault.jpg",
+        "width": 640,
+        "height": 480
+      },
+      "maxres": {
+        "url": "https://i.ytimg.com/vi/FAPrWsBgFc8/maxresdefault.jpg",
+        "width": 1280,
+        "height": 720
+      }
+    },
+    "category_id": "24"
+  }
+}

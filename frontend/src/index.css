@@ -1,0 +1,566 @@
+@import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;0,6..96,600;0,6..96,700;0,6..96,800;1,6..96,400&family=Dancing+Script:wght@400;500;600;700&family=Rubik+Puddles&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    margin: 0;
+    font-family: 'Bodoni Moda', serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+code {
+    font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+}
+
+@layer base {
+    :root {
+        /* ContentFlow Brand Colors - from brief */
+        --background: 42 14% 98%;  /* #FAF9F6 off-white paper */
+        --foreground: 0 0% 8%;      /* #141414 charcoal text */
+        
+        /* Brand Colors */
+        --ink-black: 0 0% 4%;       /* #0B0B0B */
+        --neon-highlight: 64 100% 64%; /* #F2FF4A neon yellow */
+        --cobalt-accent: 228 97% 60%;  /* #355AFB */
+        
+        /* Dartmouth Green (from previous) */
+        --primary: 155 100% 21%;     /* #00693e */
+        --primary-foreground: 0 0% 100%;
+        --primary-light: 155 85% 35%;
+        
+        /* Secondary & Accents */
+        --secondary: 228 97% 60%;    /* Cobalt */
+        --secondary-foreground: 0 0% 100%;
+        --secondary-light: 228 90% 70%;
+        
+        --accent: 64 100% 64%;       /* Neon Yellow */
+        --accent-foreground: 0 0% 4%;
+        --accent-muted: 64 90% 75%;
+        
+        /* Neutral Tones */
+        --muted: 42 10% 92%;
+        --muted-foreground: 0 0% 40%;
+        
+        --card: 0 0% 100%;
+        --card-foreground: 0 0% 8%;
+        
+        --popover: 0 0% 100%;
+        --popover-foreground: 0 0% 8%;
+        
+        --border: 0 0% 88%;
+        --input: 0 0% 92%;
+        --ring: 155 100% 21%;
+        
+        --destructive: 0 84% 60%;
+        --destructive-foreground: 0 0% 98%;
+        
+        --success: 155 100% 21%;
+        --success-foreground: 0 0% 100%;
+        
+        /* Sky gradient for hero */
+        --gradient-sky: linear-gradient(135deg, hsl(205 100% 96%) 0%, hsl(220 100% 98%) 100%);
+        --gradient-primary: linear-gradient(135deg, hsl(155 100% 21%) 0%, hsl(155 85% 35%) 100%);
+        --gradient-cobalt: linear-gradient(135deg, hsl(228 97% 60%) 0%, hsl(228 90% 70%) 100%);
+        --gradient-neon: linear-gradient(135deg, hsl(64 100% 64%) 0%, hsl(64 90% 75%) 100%);
+        
+        /* Shadows */
+        --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.05);
+        --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.06);
+        --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.1), 0 4px 6px -2px hsl(0 0% 0% / 0.05);
+        --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.1), 0 10px 10px -5px hsl(0 0% 0% / 0.04);
+        --shadow-glow: 0 0 30px hsl(155 100% 21% / 0.2);
+        --shadow-glow-neon: 0 0 20px hsl(64 100% 64% / 0.4);
+        
+        /* Transitions */
+        --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        --transition-spring: 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        --transition-marker: 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        
+        --radius: 1rem;
+    }
+    
+    .dark {
+        --background: 0 0% 8%;
+        --foreground: 0 0% 98%;
+        
+        --ink-black: 0 0% 98%;
+        --neon-highlight: 64 100% 64%;
+        --cobalt-accent: 228 97% 65%;
+        
+        --primary: 155 85% 35%;
+        --primary-foreground: 0 0% 8%;
+        --primary-light: 155 75% 45%;
+        
+        --secondary: 228 90% 70%;
+        --secondary-foreground: 0 0% 8%;
+        --secondary-light: 228 80% 75%;
+        
+        --accent: 64 100% 70%;
+        --accent-foreground: 0 0% 8%;
+        --accent-muted: 64 85% 60%;
+        
+        --muted: 0 0% 15%;
+        --muted-foreground: 0 0% 60%;
+        
+        --card: 0 0% 12%;
+        --card-foreground: 0 0% 98%;
+        
+        --popover: 0 0% 12%;
+        --popover-foreground: 0 0% 98%;
+        
+        --border: 0 0% 20%;
+        --input: 0 0% 20%;
+        --ring: 155 85% 35%;
+        
+        --destructive: 0 62% 50%;
+        --destructive-foreground: 0 0% 98%;
+        
+        --gradient-sky: linear-gradient(135deg, hsl(0 0% 8%) 0%, hsl(228 40% 12%) 100%);
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+    body {
+        @apply bg-background text-foreground;
+    }
+    
+    h1, h2, h3, h4, h5, h6 {
+        font-family: 'Bodoni Moda', serif;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+    
+    h1 {
+        font-size: 3.5rem;
+        font-weight: 800;
+    }
+    
+    h2 {
+        font-size: 2.5rem;
+        font-weight: 700;
+    }
+    
+    h3 {
+        font-size: 1.75rem;
+        font-weight: 600;
+    }
+    
+    p, span, div {
+        font-family: 'Bodoni Moda', serif;
+    }
+    
+    .font-display {
+        font-family: 'Bodoni Moda', serif;
+    }
+    
+    .font-script {
+        font-family: 'Dancing Script', cursive;
+        font-size: 1.15em;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+    }
+    
+    .font-logo {
+        font-family: 'Rubik Puddles', cursive;
+        font-weight: 400;
+        letter-spacing: 0.02em;
+    }
+    
+    .font-sans {
+        font-family: 'Bodoni Moda', serif;
+    }
+}
+
+@layer base {
+    [data-debug-wrapper="true"] {
+        display: contents !important;
+    }
+
+    [data-debug-wrapper="true"] > * {
+        margin-left: inherit;
+        margin-right: inherit;
+        margin-top: inherit;
+        margin-bottom: inherit;
+        padding-left: inherit;
+        padding-right: inherit;
+        padding-top: inherit;
+        padding-bottom: inherit;
+        column-gap: inherit;
+        row-gap: inherit;
+        gap: inherit;
+        border-left-width: inherit;
+        border-right-width: inherit;
+        border-top-width: inherit;
+        border-bottom-width: inherit;
+        border-left-style: inherit;
+        border-right-style: inherit;
+        border-top-style: inherit;
+        border-bottom-style: inherit;
+        border-left-color: inherit;
+        border-right-color: inherit;
+        border-top-color: inherit;
+        border-bottom-color: inherit;
+    }
+}
+
+/* Custom Animations */
+@keyframes float {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    25% { transform: translate(10px, -15px) rotate(2deg); }
+    50% { transform: translate(-5px, -25px) rotate(-1deg); }
+    75% { transform: translate(-10px, -15px) rotate(1deg); }
+}
+
+@keyframes float-slow {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+}
+
+@keyframes marker-sweep {
+    0% { width: 0%; opacity: 0; }
+    50% { opacity: 1; }
+    100% { width: 100%; opacity: 1; }
+}
+
+@keyframes scribble-fade-in {
+    0% { opacity: 0; transform: translateY(-5px) rotate(-2deg); }
+    100% { opacity: 1; transform: translateY(0) rotate(0deg); }
+}
+
+@keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 20px hsl(64 100% 64% / 0.2); }
+    50% { box-shadow: 0 0 40px hsl(64 100% 64% / 0.4); }
+}
+
+@keyframes slide-up {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes bounce-in {
+    0% { transform: scale(0.8); opacity: 0; }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes gradient-shift {
+    0%, 100% { 
+        transform: translate(0, 0) scale(1);
+        opacity: 0.6;
+    }
+    33% { 
+        transform: translate(15%, -15%) scale(1.1);
+        opacity: 0.8;
+    }
+    66% { 
+        transform: translate(-15%, 10%) scale(0.95);
+        opacity: 0.7;
+    }
+}
+
+@keyframes gradient-rotate {
+    0% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(180deg) scale(1.2); }
+    100% { transform: rotate(360deg) scale(1); }
+}
+
+@keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fade-out {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+@keyframes slide-down {
+    from { 
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slide-in-right {
+    from { 
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to { 
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slide-in-left {
+    from { 
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+    to { 
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes scale-in {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+@keyframes wave-pulse {
+    0%, 100% { 
+        opacity: 0.6;
+        transform: scaleY(0.8);
+    }
+    50% { 
+        opacity: 1;
+        transform: scaleY(1.2);
+    }
+}
+
+.animate-float {
+    animation: float 8s ease-in-out infinite;
+}
+
+.animate-float-slow {
+    animation: float-slow 6s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+    animation: pulse-glow 3s ease-in-out infinite;
+}
+
+.animate-slide-up {
+    animation: slide-up 0.6s ease-out;
+}
+
+.animate-bounce-in {
+    animation: bounce-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.animate-fade-in {
+    animation: fade-in 0.8s ease-out;
+}
+
+.animate-shimmer {
+    animation: shimmer 2s linear infinite;
+}
+
+/* Marker Highlight Effect */
+.marker-highlight {
+    position: relative;
+    display: inline-block;
+    font-family: 'Dancing Script', cursive;
+    font-size: 1.4em;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: 0.01em;
+}
+
+.marker-highlight::after {
+    content: '';
+    position: absolute;
+    bottom: 0.15em;
+    left: -0.1em;
+    right: -0.1em;
+    height: 0.4em;
+    background: hsl(var(--accent));
+    opacity: 0.4;
+    z-index: -1;
+    transform-origin: left;
+    animation: marker-sweep var(--transition-marker) ease-out forwards;
+}
+
+.marker-highlight-small {
+    position: relative;
+    display: inline-block;
+    font-family: 'Bodoni Moda', serif;
+    font-size: 1.1em;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.marker-highlight-small::after {
+    content: '';
+    position: absolute;
+    bottom: 0.15em;
+    left: -0.15em;
+    right: -0.15em;
+    height: 0.35em;
+    background: hsl(var(--accent));
+    opacity: 0.5;
+    z-index: -1;
+    transform-origin: left;
+    width: 100%;
+}
+
+/* Scribble Annotation */
+.scribble-note {
+    font-family: 'Dancing Script', cursive;
+    color: hsl(var(--cobalt-accent));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    font-size: 1.1em;
+}
+
+.group:hover .scribble-note {
+    animation: scribble-fade-in 0.3s ease forwards;
+}
+
+/* Card lift effect */
+.card-lift {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* Floating sticker */
+.floating-sticker {
+    position: absolute;
+    pointer-events: none;
+    user-select: none;
+}
+
+/* Dynamic Gradient Background */
+.gradient-bg-dynamic {
+    position: relative;
+    overflow: hidden;
+}
+
+.gradient-bg-dynamic::before,
+.gradient-bg-dynamic::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.6;
+    mix-blend-mode: normal;
+    pointer-events: none;
+}
+
+.gradient-bg-dynamic::before {
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, hsl(155 100% 21% / 0.4) 0%, hsl(155 85% 35% / 0.2) 50%, transparent 100%);
+    top: 10%;
+    left: 10%;
+    animation: gradient-shift 20s ease-in-out infinite;
+}
+
+.gradient-bg-dynamic::after {
+    width: 800px;
+    height: 800px;
+    background: radial-gradient(circle, hsl(64 100% 64% / 0.3) 0%, hsl(64 90% 75% / 0.15) 50%, transparent 100%);
+    bottom: 10%;
+    right: 10%;
+    animation: gradient-shift 25s ease-in-out infinite reverse;
+}
+
+.gradient-orb-1 {
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    border-radius: 50%;
+    background: radial-gradient(circle, hsl(168 46% 13% / 0.35) 0%, hsl(168 35% 25% / 0.2) 50%, transparent 100%);
+    filter: blur(70px);
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation: gradient-rotate 30s linear infinite;
+    pointer-events: none;
+}
+
+.gradient-orb-2 {
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    border-radius: 50%;
+    background: radial-gradient(circle, hsl(155 85% 35% / 0.3) 0%, hsl(155 70% 45% / 0.15) 50%, transparent 100%);
+    filter: blur(60px);
+    top: 60%;
+    right: 20%;
+    animation: gradient-shift 18s ease-in-out infinite;
+    animation-delay: 5s;
+    pointer-events: none;
+}
+
+.gradient-orb-3 {
+    position: absolute;
+    width: 350px;
+    height: 350px;
+    border-radius: 50%;
+    background: radial-gradient(circle, hsl(64 90% 75% / 0.25) 0%, hsl(64 80% 80% / 0.12) 50%, transparent 100%);
+    filter: blur(65px);
+    bottom: 20%;
+    left: 15%;
+    animation: gradient-shift 22s ease-in-out infinite;
+    animation-delay: 10s;
+    pointer-events: none;
+}
+
+/* Glass Card Effect for Video Animation Overlays */
+.glass-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+    border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
