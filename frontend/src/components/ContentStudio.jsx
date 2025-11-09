@@ -516,6 +516,117 @@ export const ContentStudio = () => {
     }
   };
 
+  // Sora generation handlers
+  const handleGenerateShot = async (shotIndex) => {
+    const shot = shotList[shotIndex];
+    
+    if (!shot) {
+      toast.error('Shot not found');
+      return;
+    }
+    
+    // Show confirmation dialog with model selection
+    setSelectedShotForGen({ shot, index: shotIndex });
+    setShowSoraDialog(true);
+  };
+  
+  const startSoraGeneration = async () => {
+    if (!selectedShotForGen) return;
+    
+    const { shot, index } = selectedShotForGen;
+    setShowSoraDialog(false);
+    
+    try {
+      // Start generation
+      const result = await generateShotWithSora(projectId, index, soraModel, '1280x720');
+      
+      if (result.success) {
+        // Track this generation job
+        setGeneratingShots(prev => ({
+          ...prev,
+          [index]: {
+            jobId: result.job_id,
+            progress: result.progress,
+            status: result.status,
+            segmentName: shot.segment_name
+          }
+        }));
+        
+        toast.success(`Generating ${shot.segment_name} with Sora ${soraModel}...`, {
+          description: 'This may take a few minutes'
+        });
+        
+        // Start polling for this job
+        pollSoraStatus(result.job_id, index);
+      }
+    } catch (error) {
+      console.error('Sora generation error:', error);
+      toast.error(error.message || 'Failed to start video generation');
+    }
+  };
+  
+  const pollSoraStatus = async (jobId, shotIndex) => {
+    const checkStatus = async () => {
+      try {
+        const status = await checkSoraStatus(jobId);
+        
+        // Update generation state
+        setGeneratingShots(prev => ({
+          ...prev,
+          [shotIndex]: {
+            ...prev[shotIndex],
+            progress: status.progress,
+            status: status.status
+          }
+        }));
+        
+        if (status.status === 'completed' && status.file_path) {
+          // Mark shot as uploaded
+          setShotList(prev => prev.map((s, idx) => 
+            idx === shotIndex 
+              ? { ...s, uploaded: true, file_path: status.file_path, generated_by_sora: true }
+              : s
+          ));
+          
+          // Remove from generating shots
+          setGeneratingShots(prev => {
+            const updated = { ...prev };
+            delete updated[shotIndex];
+            return updated;
+          });
+          
+          toast.success(`${status.segment_name} generated successfully! ✨`, {
+            description: 'Video is ready and marked as uploaded'
+          });
+          
+          // Reload project
+          await loadProject();
+          
+        } else if (status.status === 'failed') {
+          // Remove from generating shots
+          setGeneratingShots(prev => {
+            const updated = { ...prev };
+            delete updated[shotIndex];
+            return updated;
+          });
+          
+          toast.error(`Generation failed: ${status.error || 'Unknown error'}`);
+          
+        } else {
+          // Continue polling (every 5 seconds for Sora)
+          setTimeout(() => checkStatus(), 5000);
+        }
+      } catch (error) {
+        console.error('Error checking Sora status:', error);
+        // Continue polling even on error
+        setTimeout(() => checkStatus(), 5000);
+      }
+    };
+    
+    checkStatus();
+  };
+
+
   const allSegmentsUploaded = () => {
     return shotList.length > 0 && shotList.every(shot => shot.uploaded);
   };
