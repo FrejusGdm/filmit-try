@@ -1,2 +1,0 @@
-file '/app/backend/uploads/ebb7d579-8e95-4134-ad14-02e3ae311064_key_features_IMG_1358.MOV'
-file '/app/backend/uploads/ebb7d579-8e95-4134-ad14-02e3ae311064_problem_callout_IMG_1358.MOV'
