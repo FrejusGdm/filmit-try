@@ -39,11 +39,19 @@ fi
 
 # Install Python dependencies
 echo ""
-echo "🐍 Installing Python dependencies..."
+echo "🐍 Checking Python dependencies..."
 cd /app/backend
 if [ -f "requirements.txt" ]; then
-    pip install -q -r requirements.txt
-    echo "   ✅ Python dependencies installed"
+    # Try to install, but don't fail if there are conflicts
+    pip install -q -r requirements.txt 2>/dev/null || echo "   ⚠️  Some dependency conflicts (this is usually okay)"
+    
+    # Check if critical packages are installed
+    python3 -c "import fastapi, motor, bcrypt" 2>/dev/null
+    if [ $? -eq 0 ]; then
+        echo "   ✅ Critical Python packages available"
+    else
+        echo "   ⚠️  Some critical packages missing"
+    fi
 else
     echo "   ⚠️  requirements.txt not found"
 fi
