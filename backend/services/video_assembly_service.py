@@ -89,7 +89,21 @@ class VideoAssemblyService:
             
         Returns:
             assembly_id for tracking progress
+            
+        Raises:
+            RuntimeError: If FFmpeg is not installed
         """
+        # Check if FFmpeg is available
+        if not FFMPEG_AVAILABLE:
+            error_msg = (
+                "FFmpeg is not installed on this system. "
+                "Video assembly requires FFmpeg to be installed. "
+                "Please run: apt-get update && apt-get install -y ffmpeg "
+                "Or run the setup script: /app/setup.sh"
+            )
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
+        
         assembly_id = str(uuid.uuid4())
         
         # Clean up old assembly files for this project
