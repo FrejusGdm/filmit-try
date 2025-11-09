@@ -277,12 +277,42 @@ Provide 10-14 diverse suggestions including:
         try:
             chat = self._get_or_create_chat(session_id)
             
+            # Enhance message with context
+            enhanced_message = message
+            
             # Add video context if provided
             if video_context:
-                context_note = f"\n\n[Context: User is working on video '{video_context.get('filename')}']\n\n"
-                message = context_note + message
+                context_note = (
+                    f"\n\n[Context: User has uploaded a video called '{video_context.get('filename')}'. "
+                    f"They may be asking about this video or general content advice.]\n\n"
+                )
+                enhanced_message = context_note + message
             
-            user_message = UserMessage(text=message)
+            # Detect question type and add guidance
+            message_lower = message.lower()
+            
+            if any(phrase in message_lower for phrase in ['what should i', 'give me ideas', 'content ideas', 'what to record', 'what to create', 'what can i']):
+                guidance = (
+                    "\n\n[User is asking for content ideas. Provide 3-5 creative, specific video concepts "
+                    "with brief descriptions. Focus on viral formats and trending topics. Be inspiring and practical.]\n\n"
+                )
+                enhanced_message = guidance + enhanced_message
+            
+            elif any(phrase in message_lower for phrase in ['trending', 'what\'s viral', 'what\'s hot', 'popular']):
+                guidance = (
+                    "\n\n[User wants trend insights. Share current viral formats, trending sounds/audio, "
+                    "popular hashtags, and what's performing well right now.]\n\n"
+                )
+                enhanced_message = guidance + enhanced_message
+            
+            elif any(phrase in message_lower for phrase in ['how to film', 'how do i shoot', 'recording tips', 'filming']):
+                guidance = (
+                    "\n\n[User needs recording/filming advice. Provide practical shooting tips, "
+                    "equipment suggestions, lighting, framing, and technical guidance.]\n\n"
+                )
+                enhanced_message = guidance + enhanced_message
+            
+            user_message = UserMessage(text=enhanced_message)
             response = await chat.send_message(user_message)
             
             return response
