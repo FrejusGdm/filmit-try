@@ -327,6 +327,30 @@ backend:
         agent: "testing"
         comment: "All 4 shot management endpoints tested successfully: 1) UPDATE shot - Successfully updated first shot's script and duration, 2) ADD shot - Added new testimonial shot with correct parameters (segment_name='testimonial', script='Customer review', visual_guide='Interview style', duration=20, required=false), 3) REORDER shots - Successfully swapped first and last shots in shot list, 4) DELETE shot - Successfully removed middle shot from list. All operations correctly update MongoDB and return updated shot_list with {success: true}. Shot list persistence verified in database."
 
+  - task: "Sora 2 Video Generation Integration"
+    implemented: true
+    working: true
+    file: "/app/backend/services/sora_service.py, /app/backend/routers/director.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Sora 2 API integration complete. Backend endpoints: POST /api/director/generate-shot (starts generation), GET /api/director/sora-status/{job_id} (check status and download), DELETE /api/director/sora-job/{job_id} (cancel). Frontend: SoraGenerationDialog modal, Generate buttons on shot cards, status polling, video preview. Fixed login issue (JWT_SECRET_KEY) and JSX syntax error. All features working."
+
+  - task: "ElevenLabs Music Generation Integration"
+    implemented: true
+    working: false
+    file: "/app/backend/services/elevenlabs_music_service.py, /app/backend/routers/director.py, /app/frontend/src/components/MusicSection.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "main"
+        comment: "Implemented ElevenLabs Music API integration. Backend: Created elevenlabs_music_service.py with generate_music() function, added 3 endpoints to director.py - POST /api/director/music/generate (generates music), GET /api/director/music/{project_id}/{filename} (serves audio), GET /api/director/music/info/{project_id} (gets music metadata). Frontend: Created MusicSection component with editable prompt textarea, duration selector (10s, 20s, 30s, 60s), generate/regenerate button, audio player with play/pause/download controls, waveform progress bar. Integrated into ContentStudio.jsx below shot list. API key added to .env. Ready for comprehensive backend and frontend testing."
+
 frontend:
   - task: "Hero Video Animation Component"
     implemented: true
