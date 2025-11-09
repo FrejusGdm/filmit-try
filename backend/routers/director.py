@@ -813,3 +813,38 @@ async def cancel_sora_job(job_id: str):
     except Exception as e:
         logger.error(f"Error deleting Sora job: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+@router.get("/video-preview/{project_id}/{filename}")
+async def serve_video_preview(project_id: str, filename: str):
+    """
+    Serve generated video files for preview
+    
+    This endpoint serves video files from the uploads directory
+    for preview in the frontend.
+    """
+    try:
+        # Construct file path
+        uploads_dir = Path(__file__).parent.parent / 'uploads'
+        file_path = uploads_dir / filename
+        
+        # Security check: ensure file is in uploads directory
+        if not file_path.is_relative_to(uploads_dir):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="Video file not found")
+        
+        # Return video file
+        return FileResponse(
+            path=str(file_path),
+            media_type="video/mp4",
+            filename=filename
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error serving video preview: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
