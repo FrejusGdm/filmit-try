@@ -3,6 +3,7 @@ Director Agent Router - LangGraph-based video creation workflow
 """
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from motor.motor_asyncio import AsyncIOMotorDatabase, AsyncIOMotorClient
