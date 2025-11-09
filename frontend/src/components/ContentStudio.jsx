@@ -13,6 +13,7 @@ import {
 import { toast } from 'sonner';
 import { useNavigate, useParams } from 'react-router-dom';
 import { UserMenu } from './UserMenu';
+import MusicSection from './MusicSection';
 import {
   sendDirectorMessage,
   getDirectorProject,
