@@ -262,12 +262,18 @@ async def upload_video_segment(
 
 
 @router.get("/project/{project_id}")
-async def get_director_project(project_id: str):
-    """Get project details"""
-    project = await db.video_projects.find_one({"project_id": project_id}, {"_id": 0})
+async def get_director_project(
+    project_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get project details - only returns user's own projects"""
+    project = await db.video_projects.find_one({
+        "project_id": project_id,
+        "user_id": current_user.id
+    }, {"_id": 0})
     
     if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+        raise HTTPException(status_code=404, detail="Project not found or access denied")
     
     return project
 
