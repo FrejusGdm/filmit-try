@@ -23,6 +23,7 @@ import sys
 sys.path.append(str(Path(__file__).parent.parent / "agents"))
 from director_workflow import DirectorWorkflow, DirectorState
 from viral_formats import seed_viral_formats
+from segment_analysis_agent import analyze_uploaded_segment
 from langchain_core.messages import HumanMessage
 
 
@@ -222,6 +223,22 @@ async def upload_video_segment(
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
+        logger.info(f"Uploaded segment {segment_name} to {file_path}")
+        
+        # Get project to retrieve shot data for analysis
+        project = await db.video_projects.find_one({"project_id": project_id}, {"_id": 0})
+        
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        # Find the shot data for this segment
+        shot_list = project.get("shot_list", [])
+        shot_data = next((s for s in shot_list if s.get("segment_name") == segment_name), None)
+        
+        if not shot_data:
+            raise HTTPException(status_code=404, detail=f"Segment '{segment_name}' not found in shot list")
+        
+        # Update segment data
         # Update project in database - remove old segment and add new one
         segment_data = {
             "segment_name": segment_name,
@@ -247,23 +264,70 @@ async def upload_video_segment(
         )
         
         # Update shot list to mark segment as uploaded
-        project = await db.video_projects.find_one({"project_id": project_id}, {"_id": 0})
-        if project and project.get("shot_list"):
-            shot_list = project["shot_list"]
-            for shot in shot_list:
-                if shot.get("segment_name") == segment_name:
-                    shot["uploaded"] = True
-            
-            await db.video_projects.update_one(
-                {"project_id": project_id},
-                {"$set": {"shot_list": shot_list}}
-            )
+        for shot in shot_list:
+            if shot.get("segment_name") == segment_name:
+                shot["uploaded"] = True
+                shot["file_path"] = str(file_path)
         
-        return {
-            "success": True,
-            "message": f"Segment '{segment_name}' uploaded successfully",
-            "file_path": str(file_path)
-        }
+        await db.video_projects.update_one(
+            {"project_id": project_id},
+            {"$set": {"shot_list": shot_list}}
+        )
+        
+        logger.info(f"Marked {segment_name} as uploaded in database")
+        
+        # ⚡ TRIGGER AUTOMATIC ANALYSIS
+        # Run analysis in background (non-blocking)
+        api_key = os.environ.get('EMERGENT_LLM_KEY')
+        if api_key:
+            try:
+                logger.info(f"Starting automatic analysis for {segment_name}")
+                
+                # Analyze the uploaded segment
+                analysis = await analyze_uploaded_segment(
+                    project_id=project_id,
+                    segment_name=segment_name,
+                    file_path=str(file_path),
+                    shot_data=shot_data,
+                    api_key=api_key,
+                    db=db
+                )
+                
+                logger.info(f"✅ Analysis complete for {segment_name}. Score: {analysis.get('content_analysis', {}).get('overall_assessment', {}).get('overall_score', 'N/A')}/10")
+                
+                return {
+                    "success": True,
+                    "message": f"Segment '{segment_name}' uploaded and analyzed successfully",
+                    "file_path": str(file_path),
+                    "analysis_available": True,
+                    "analysis_summary": {
+                        "overall_score": analysis.get("content_analysis", {}).get("overall_assessment", {}).get("overall_score", 0),
+                        "viral_potential": analysis.get("content_analysis", {}).get("overall_assessment", {}).get("viral_potential", "Unknown"),
+                        "ready_for_assembly": analysis.get("content_analysis", {}).get("overall_assessment", {}).get("ready_for_assembly", True)
+                    }
+                }
+                
+            except Exception as analysis_error:
+                # Don't fail the upload if analysis fails
+                logger.error(f"Analysis failed but upload succeeded: {str(analysis_error)}")
+                return {
+                    "success": True,
+                    "message": f"Segment '{segment_name}' uploaded successfully (analysis failed)",
+                    "file_path": str(file_path),
+                    "analysis_available": False,
+                    "analysis_error": str(analysis_error)
+                }
+        else:
+            logger.warning("EMERGENT_LLM_KEY not available, skipping analysis")
+            return {
+                "success": True,
+                "message": f"Segment '{segment_name}' uploaded successfully (analysis skipped)",
+                "file_path": str(file_path),
+                "analysis_available": False
+            }
+        
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error uploading segment: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -302,6 +366,56 @@ async def get_director_project(
         raise HTTPException(status_code=404, detail="Project not found or access denied")
     
     return project
+
+
+@router.get("/segment-analysis/{project_id}/{segment_name}")
+async def get_segment_analysis(project_id: str, segment_name: str):
+    """
+    Get the automatic analysis for a specific segment.
+    Returns the AI-generated analysis with scores, feedback, and recommendations.
+    """
+    try:
+        # Try to get from dedicated collection first
+        analysis = await db.segment_analyses.find_one(
+            {"_id": f"{project_id}_{segment_name}"},
+            {"_id": 0}
+        )
+        
+        if analysis:
+            return {
+                "success": True,
+                "analysis": analysis
+            }
+        
+        # Fallback: check if it's embedded in the project
+        project = await db.video_projects.find_one(
+            {"project_id": project_id},
+            {"_id": 0, "shot_list": 1}
+        )
+        
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        shot_list = project.get("shot_list", [])
+        target_shot = next((s for s in shot_list if s.get("segment_name") == segment_name), None)
+        
+        if target_shot and target_shot.get("analysis"):
+            return {
+                "success": True,
+                "analysis": target_shot["analysis"]
+            }
+        
+        # No analysis found
+        return {
+            "success": False,
+            "message": "Analysis not available for this segment. It may not have been uploaded yet or analysis failed."
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving segment analysis: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/seed-formats")

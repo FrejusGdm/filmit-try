@@ -8,7 +8,7 @@ import { Input } from './ui/input';
 import { 
   Sparkles, Upload, X, Send, Video, CheckCircle, XCircle, 
   Film, Loader2, User, Clock, ChevronLeft, FolderOpen, Clapperboard,
-  Download, Settings, Edit2, Trash2, Save, Plus, GripVertical, Wand2
+  Download, Settings, Edit2, Trash2, Save, Plus, GripVertical, MessageSquare, Wand2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -24,6 +24,7 @@ import {
   addShot,
   deleteShot,
   reorderShots,
+  getSegmentAnalysis
   generateShotWithSora,
   checkSoraStatus
 } from '../utils/api';
@@ -588,9 +589,40 @@ export const ContentStudio = () => {
 
     setUploadingSegment(segment.segment_name);
     try {
-      await uploadDirectorSegment(projectId, segment.segment_name, file);
+      // Upload the segment (this now triggers automatic analysis on the backend)
+      const uploadResult = await uploadDirectorSegment(projectId, segment.segment_name, file);
       
-      toast.success(`${segment.segment_name} uploaded successfully!`);
+      // Check if analysis is available
+      if (uploadResult.analysis_available) {
+        const analysis = uploadResult.analysis_summary;
+        
+        // Show analysis results in toast
+        toast.success(
+          `${segment.segment_name} uploaded & analyzed!`,
+          {
+            description: `Score: ${analysis.overall_score}/10 | Viral Potential: ${analysis.viral_potential}`,
+            duration: 5000,
+          }
+        );
+        
+        // Add a message from the Director about the analysis
+        const analysisMessage = `✅ **${segment.segment_name.replace(/_/g, ' ').toUpperCase()} Analyzed!**
+        
+Score: ${analysis.overall_score}/10
+Viral Potential: ${analysis.viral_potential}
+${analysis.ready_for_assembly ? '✅ Ready for assembly' : '⚠️ May need adjustments'}
+
+Ask me for detailed feedback anytime!`;
+        
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: analysisMessage,
+          timestamp: new Date()
+        }]);
+        
+      } else {
+        toast.success(`${segment.segment_name} uploaded successfully!`);
+      }
       
       // Update shot list
       setShotList(prev => prev.map(s => 
@@ -599,7 +631,7 @@ export const ContentStudio = () => {
           : s
       ));
       
-      // Reload project to get latest state
+      // Reload project to get latest state with analysis
       await loadProject();
       
     } catch (error) {
@@ -1258,12 +1290,23 @@ export const ContentStudio = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      setInputValue("Can you review all my uploaded shots?");
+                      const uploadedShots = shotList.filter(s => s.uploaded);
+                      const comprehensivePrompt = `Give me detailed feedback on all my uploaded shots. For each shot, prioritize:
+
+1. CRITICAL ISSUES that would prevent the video from going viral (hook effectiveness, pacing problems, technical failures)
+2. HIGH-IMPACT IMPROVEMENTS that would significantly boost engagement (first 3 seconds, energy level, visual quality)
+3. QUICK WINS that are easy to fix (lighting, framing, background distractions)
+
+Uploaded shots: ${uploadedShots.map(s => s.segment_name.replace(/_/g, ' ')).join(', ')}
+
+Be specific and actionable. Tell me what to reshoot vs what can be fixed in editing. Focus on the most important changes first.`;
+                      setInputValue(comprehensivePrompt);
                       textareaRef.current?.focus();
                     }}
-                    className="text-xs"
+                    className="text-xs gap-1.5"
                   >
-                    ✨ Review Uploads
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    Get Feedback
                   </Button>
                 )}
               </div>
