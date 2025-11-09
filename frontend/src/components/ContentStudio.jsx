@@ -269,34 +269,68 @@ const SortableShotCard = ({ shot, index, projectId, onUpdate, onDelete, uploadin
           </div>
 
           {!shot.uploaded && !isEditing && (
-            <Button
-              size="sm"
-              onClick={() => {
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = 'video/*';
-                input.onchange = (e) => {
-                  const file = e.target.files[0];
-                  if (file) handleSegmentUpload(shot, file);
-                };
-                input.click();
-              }}
-              disabled={uploadingSegment === shot.segment_name}
-              className="w-full"
-              variant="outline"
-            >
-              {uploadingSegment === shot.segment_name ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Uploading...
-                </>
+            <>
+              {generatingStatus ? (
+                // Show generation progress
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Generating with Sora...</span>
+                    <span className="font-semibold text-primary">{generatingStatus.progress}%</span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                    <div 
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 h-full transition-all duration-300"
+                      style={{ width: `${generatingStatus.progress}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground italic">
+                    {generatingStatus.status === 'queued' && 'Queued for processing...'}
+                    {generatingStatus.status === 'in_progress' && 'AI is creating your video...'}
+                  </p>
+                </div>
               ) : (
-                <>
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload Footage
-                </>
+                // Show action buttons
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => handleGenerateShot(index)}
+                    disabled={uploadingSegment === shot.segment_name}
+                    className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0"
+                  >
+                    <Wand2 className="w-4 h-4 mr-2" />
+                    Generate Draft
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'video/*';
+                      input.onchange = (e) => {
+                        const file = e.target.files[0];
+                        if (file) handleSegmentUpload(shot, file);
+                      };
+                      input.click();
+                    }}
+                    disabled={uploadingSegment === shot.segment_name}
+                    className="flex-1"
+                    variant="outline"
+                  >
+                    {uploadingSegment === shot.segment_name ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Upload Footage
+                      </>
+                    )}
+                  </Button>
+                </div>
               )}
-            </Button>
+            </>
           )}
         </div>
       </CardContent>
