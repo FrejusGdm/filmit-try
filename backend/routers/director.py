@@ -994,7 +994,7 @@ async def get_project_music_info(project_id: str):
     try:
         project = await db.video_projects.find_one(
             {"project_id": project_id},
-            {"_id": 0, "music": 1}
+            {"_id": 0}
         )
         
         if not project:
