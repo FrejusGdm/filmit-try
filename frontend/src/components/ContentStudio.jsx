@@ -23,7 +23,8 @@ import {
   updateShot,
   addShot,
   deleteShot,
-  reorderShots
+  reorderShots,
+  getSegmentAnalysis
 } from '../utils/api';
 import {
   Dialog,
