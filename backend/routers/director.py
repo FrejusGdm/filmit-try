@@ -58,7 +58,10 @@ class DirectorResponse(BaseModel):
 
 
 @router.post("/project", response_model=DirectorResponse)
-async def create_director_project(input: DirectorProjectCreate):
+async def create_director_project(
+    input: DirectorProjectCreate,
+    current_user: UserResponse = Depends(get_current_user)
+):
     """Create a new video project with the Director workflow"""
     try:
         project_id = str(uuid.uuid4())
