@@ -421,6 +421,10 @@ export const ContentStudio = () => {
   const [selectedShotForGen, setSelectedShotForGen] = useState(null);
   const [soraModel, setSoraModel] = useState('sora-2'); // 'sora-2' or 'sora-2-pro'
   
+  // Video preview state
+  const [showVideoPreview, setShowVideoPreview] = useState(false);
+  const [previewVideoData, setPreviewVideoData] = useState(null); // { shot, index, videoUrl }
+  
   const textareaRef = useRef(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
