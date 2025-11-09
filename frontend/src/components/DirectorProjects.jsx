@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
-import { UserMenu } from './UserMenu';
 
 export const DirectorProjects = () => {
   const navigate = useNavigate();
@@ -84,7 +83,6 @@ export const DirectorProjects = () => {
                 <Film className="w-3 h-3 mr-1" />
                 My Projects
               </Badge>
-              <UserMenu />
             </div>
           </div>
         </div>

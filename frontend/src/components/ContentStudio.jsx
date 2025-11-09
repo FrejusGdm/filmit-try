@@ -287,33 +287,6 @@ const SortableShotCard = ({ shot, index, projectId, onUpdate, onDelete, uploadin
             </div>
           </div>
 
-          {!isEditing && (
-            <Button
-              size="sm"
-              onClick={() => {
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = 'video/*';
-                input.onchange = (e) => {
-                  const file = e.target.files[0];
-                  if (file) handleSegmentUpload(shot, file);
-                };
-                input.click();
-              }}
-              disabled={uploadingSegment === shot.segment_name}
-              className="w-full"
-              variant={shot.uploaded ? "secondary" : "outline"}
-            >
-              {uploadingSegment === shot.segment_name ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Uploading...
-                </>
-              ) : shot.uploaded ? (
-                <>
-                  <Upload className="w-4 h-4 mr-2" />
-                  Replace Footage
-                </>
           {!shot.uploaded && !isEditing && (
             <>
               {generatingStatus ? (
@@ -508,28 +481,18 @@ export const ContentStudio = () => {
         setMatchedFormat(projectData.matched_format);
       }
       
-      // Load messages from database if they exist
-      if (projectData.messages && projectData.messages.length > 0) {
-        const loadedMessages = projectData.messages.map(msg => ({
-          role: msg.type === 'human' ? 'user' : 'assistant',
-          content: msg.content,
-          timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date()
-        }));
-        setMessages(loadedMessages);
-      } else {
-        // Initialize with welcome message only if no messages exist
-        const shotCount = projectData.shot_list ? projectData.shot_list.length : 0;
-        const formatName = projectData.matched_format ? projectData.matched_format.name : 'a viral format';
-        const platform = projectData.target_platform || 'your platform';
-        
-        const summary = `You're creating content for ${platform} using the "${formatName}" format with ${shotCount} shots to film.`;
-        
-        setMessages([{
-          role: 'assistant',
-          content: `I've created your shot list based on the best viral format for your content. ${summary} Ready to start recording?`,
-          timestamp: new Date()
-        }]);
-      }
+      // Initialize messages with brief summary
+      const shotCount = projectData.shot_list ? projectData.shot_list.length : 0;
+      const formatName = projectData.matched_format ? projectData.matched_format.name : 'a viral format';
+      const platform = projectData.target_platform || 'your platform';
+      
+      const summary = `You're creating content for ${platform} using the "${formatName}" format with ${shotCount} shots to film.`;
+      
+      setMessages([{
+        role: 'assistant',
+        content: `I've created your shot list based on the best viral format for your content. ${summary} Ready to start recording?`,
+        timestamp: new Date()
+      }]);
     } catch (error) {
       console.error('Error loading project:', error);
       toast.error('Failed to load project');
@@ -994,6 +957,63 @@ export const ContentStudio = () => {
                     Add Shot
                   </Button>
                 </div>
+                
+                {/* Generate Final Video Button */}
+                {allSegmentsUploaded() && (
+                  <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 dark:border-green-800">
+                    <CardContent className="pt-6 pb-6">
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
+                            <CheckCircle className="w-6 h-6 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-foreground">All Shots Complete!</h3>
+                            <p className="text-xs text-muted-foreground">Ready to assemble your final video</p>
+                          </div>
+                        </div>
+                        
+                        {!isAssembling && !assemblyId && (
+                          <Button 
+                            onClick={() => setShowAssemblyDialog(true)}
+                            className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold"
+                            size="lg"
+                          >
+                            <Clapperboard className="w-5 h-5 mr-2" />
+                            Generate Final Video
+                          </Button>
+                        )}
+                        
+                        {isAssembling && (
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">Assembling video...</span>
+                              <span className="font-semibold text-foreground">{assemblyProgress}%</span>
+                            </div>
+                            <Progress value={assemblyProgress} className="h-2" />
+                            <p className="text-xs text-muted-foreground">
+                              {assemblyProgress < 30 && "Processing segments..."}
+                              {assemblyProgress >= 30 && assemblyProgress < 60 && "Adding transitions..."}
+                              {assemblyProgress >= 60 && assemblyProgress < 90 && "Optimizing video..."}
+                              {assemblyProgress >= 90 && "Finalizing..."}
+                            </p>
+                          </div>
+                        )}
+                        
+                        {assemblyStatus === 'completed' && assemblyId && (
+                          <Button 
+                            onClick={handleDownloadVideo}
+                            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold"
+                            size="lg"
+                          >
+                            <Download className="w-5 h-5 mr-2" />
+                            Download Final Video
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
 
               {/* Add Shot Form */}
@@ -1087,75 +1107,6 @@ export const ContentStudio = () => {
                     </div>
                   </SortableContext>
                 </DndContext>
-              )}
-              
-              {/* Generate Video Button - Below Shot Cards */}
-              {shotList.length > 0 && (
-                <div className="pt-4 space-y-3">
-                  {!isAssembling && !assemblyId && (
-                    <Button 
-                      onClick={() => {
-                        // Check if any shots have footage uploaded
-                        const hasUploads = shotList.some(shot => shot.uploaded);
-                        if (!hasUploads) {
-                          toast.error('Please upload footage for at least one shot before generating the video.', {
-                            description: 'Click the "Upload Footage" button on any shot to add your video clips.',
-                            duration: 5000
-                          });
-                          return;
-                        }
-                        setShowAssemblyDialog(true);
-                      }}
-                      className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold shadow-lg"
-                      size="lg"
-                    >
-                      <Clapperboard className="w-5 h-5 mr-2" />
-                      Generate Video
-                    </Button>
-                  )}
-                  
-                  {isAssembling && (
-                    <Card className="border-primary/20 bg-gradient-to-br from-background to-primary/5">
-                      <CardContent className="pt-4 pb-4">
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">Generating video...</span>
-                            <span className="font-semibold text-foreground">{assemblyProgress}%</span>
-                          </div>
-                          <Progress value={assemblyProgress} className="h-2" />
-                          <p className="text-xs text-muted-foreground">
-                            {assemblyProgress < 30 && "Processing segments..."}
-                            {assemblyProgress >= 30 && assemblyProgress < 60 && "Adding transitions..."}
-                            {assemblyProgress >= 60 && assemblyProgress < 90 && "Optimizing video..."}
-                            {assemblyProgress >= 90 && "Finalizing..."}
-                          </p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-                  
-                  {assemblyStatus === 'completed' && assemblyId && (
-                    <div className="space-y-2">
-                      <Button 
-                        onClick={handleDownloadVideo}
-                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold shadow-lg"
-                        size="lg"
-                      >
-                        <Download className="w-5 h-5 mr-2" />
-                        Download Video
-                      </Button>
-                      <Button 
-                        onClick={() => setShowAssemblyDialog(true)}
-                        variant="outline"
-                        className="w-full border-primary/30 hover:bg-primary/5"
-                        size="lg"
-                      >
-                        <Settings className="w-5 h-5 mr-2" />
-                        Regenerate Video
-                      </Button>
-                    </div>
-                  )}
-                </div>
               )}
             </div>
           </div>
@@ -1489,7 +1440,7 @@ export const ContentStudio = () => {
               className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
             >
               <Clapperboard className="w-4 h-4 mr-2" />
-              {assemblyStatus === 'completed' ? 'Regenerate Video' : 'Start Assembly'}
+              Start Assembly
             </Button>
           </DialogFooter>
         </DialogContent>
