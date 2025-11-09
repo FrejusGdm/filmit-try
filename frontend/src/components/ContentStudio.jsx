@@ -664,6 +664,54 @@ export const ContentStudio = () => {
     checkStatus();
   };
 
+  // Video preview handler
+  const handlePreviewVideo = (shot, index) => {
+    if (!shot.file_path) {
+      toast.error('Video file not found');
+      return;
+    }
+    
+    // Extract filename from file path
+    const filename = shot.file_path.split('/').pop();
+    const videoUrl = `${process.env.REACT_APP_BACKEND_URL}/api/director/video-preview/${projectId}/${filename}`;
+    
+    setPreviewVideoData({
+      shot,
+      index,
+      videoUrl
+    });
+    setShowVideoPreview(true);
+  };
+  
+  // Regenerate shot with Sora
+  const handleRegenerateShot = (shotIndex) => {
+    // Close preview modal
+    setShowVideoPreview(false);
+    
+    // Open generation dialog
+    const shot = shotList[shotIndex];
+    setSelectedShotForGen({ shot, index: shotIndex });
+    setShowSoraDialog(true);
+  };
+  
+  // Delete generated draft
+  const handleDeleteDraft = async (shotIndex) => {
+    const confirmed = window.confirm('Delete this generated draft? You can regenerate it anytime.');
+    
+    if (confirmed) {
+      // Update shot to mark as not uploaded
+      setShotList(prev => prev.map((s, idx) => 
+        idx === shotIndex 
+          ? { ...s, uploaded: false, file_path: null, generated_by_sora: false }
+          : s
+      ));
+      
+      setShowVideoPreview(false);
+      toast.success('Draft deleted. You can generate a new one.');
+    }
+  };
+
+
 
   const allSegmentsUploaded = () => {
     return shotList.length > 0 && shotList.every(shot => shot.uploaded);
