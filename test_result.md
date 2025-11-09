@@ -574,7 +574,6 @@ metadata:
 
 test_plan:
   current_focus:
-    - "ElevenLabs Music Generation Integration"
     - "Workspace - Video Upload Integration"
     - "Workspace - AI Analysis Integration"
     - "Workspace - Suggestions Display & Actions"
