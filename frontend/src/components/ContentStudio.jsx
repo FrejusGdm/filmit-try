@@ -23,7 +23,9 @@ import {
   updateShot,
   addShot,
   deleteShot,
-  reorderShots
+  reorderShots,
+  generateShotWithSora,
+  checkSoraStatus
 } from '../utils/api';
 import {
   Dialog,
