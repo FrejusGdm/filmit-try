@@ -341,15 +341,18 @@ backend:
 
   - task: "ElevenLabs Music Generation Integration"
     implemented: true
-    working: false
+    working: true
     file: "/app/backend/services/elevenlabs_music_service.py, /app/backend/routers/director.py, /app/frontend/src/components/MusicSection.jsx"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: false
         agent: "main"
         comment: "Implemented ElevenLabs Music API integration. Backend: Created elevenlabs_music_service.py with generate_music() function, added 3 endpoints to director.py - POST /api/director/music/generate (generates music), GET /api/director/music/{project_id}/{filename} (serves audio), GET /api/director/music/info/{project_id} (gets music metadata). Frontend: Created MusicSection component with editable prompt textarea, duration selector (10s, 20s, 30s, 60s), generate/regenerate button, audio player with play/pause/download controls, waveform progress bar. Integrated into ContentStudio.jsx below shot list. API key added to .env. Ready for comprehensive backend and frontend testing."
+      - working: true
+        agent: "testing"
+        comment: "Comprehensive backend testing completed successfully. Fixed 2 critical bugs: 1) Async generator issue - music.compose() returns async generator directly (no await needed), 2) Route ordering issue - moved /music/info/{project_id} before /music/{project_id}/{filename} to prevent route collision. All 14 tests passed: ✅ Music generation with 10s, 20s, 30s durations working perfectly, ✅ Generated music files saved to /app/backend/uploads/music/ (file sizes: 158KB for 10s, 314KB for 20s, 470KB for 30s), ✅ Music file serving endpoint returns audio/mpeg content-type correctly, ✅ Music info endpoint returns has_music: false before generation and has_music: true with metadata after generation, ✅ MongoDB project documents correctly updated with music metadata (filename, file_path, prompt, duration_seconds, generated_at), ✅ Edge case validation working: invalid duration (<10 or >60) returns 400 error, non-existent project_id returns 404 error, empty prompt correctly rejected by ElevenLabs API. ElevenLabs Music API integration fully functional and production-ready."
 
 frontend:
   - task: "Hero Video Animation Component"
