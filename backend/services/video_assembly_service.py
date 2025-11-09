@@ -54,7 +54,7 @@ class VideoAssemblyService:
         options: Dict[str, Any] = None
     ) -> str:
         """
-        Start video assembly process
+        Start video assembly process (replaces existing assembly if present)
         
         Args:
             project_id: Director project ID
@@ -66,6 +66,42 @@ class VideoAssemblyService:
             assembly_id for tracking progress
         """
         assembly_id = str(uuid.uuid4())
+        
+        # Clean up old assembly files for this project
+        try:
+            old_assemblies = await self.db.video_assemblies.find(
+                {"project_id": project_id}
+            ).to_list(length=100)
+            
+            for old_assembly in old_assemblies:
+                # Delete old assembled video files
+                if old_assembly.get('output_path'):
+                    old_file = Path(old_assembly['output_path'])
+                    if old_file.exists():
+                        try:
+                            old_file.unlink()
+                            logger.info(f"Deleted old assembly file: {old_file}")
+                        except Exception as e:
+                            logger.warning(f"Could not delete old assembly file {old_file}: {e}")
+                
+                # Delete temporary files for this assembly
+                old_id = old_assembly.get('assembly_id', '')
+                if old_id:
+                    temp_files = list(Path(PROCESSED_DIR).glob(f"{old_id}_*"))
+                    for temp_file in temp_files:
+                        try:
+                            temp_file.unlink()
+                            logger.info(f"Deleted temp file: {temp_file}")
+                        except Exception as e:
+                            logger.warning(f"Could not delete temp file {temp_file}: {e}")
+            
+            # Delete old assembly records from database
+            if old_assemblies:
+                await self.db.video_assemblies.delete_many({"project_id": project_id})
+                logger.info(f"Deleted {len(old_assemblies)} old assembly records for project {project_id}")
+                
+        except Exception as e:
+            logger.warning(f"Error cleaning up old assemblies: {e}")
         
         # Set default options
         if options is None:
