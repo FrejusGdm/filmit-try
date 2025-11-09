@@ -739,73 +739,61 @@ export const ContentStudio = () => {
                   </Button>
                 </div>
                 
-                {/* Generate Final Video Button */}
-                {allSegmentsUploaded() && (
-                  <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 dark:border-green-800">
-                    <CardContent className="pt-6 pb-6">
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
-                            <CheckCircle className="w-6 h-6 text-white" />
+                {/* Generate Video Button - Always Visible */}
+                <Card className="border-primary/20 bg-gradient-to-br from-background to-primary/5">
+                  <CardContent className="pt-6 pb-6">
+                    <div className="space-y-4">
+                      {!isAssembling && !assemblyId && (
+                        <Button 
+                          onClick={() => setShowAssemblyDialog(true)}
+                          className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold"
+                          size="lg"
+                        >
+                          <Clapperboard className="w-5 h-5 mr-2" />
+                          Generate Video
+                        </Button>
+                      )}
+                      
+                      {isAssembling && (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Generating video...</span>
+                            <span className="font-semibold text-foreground">{assemblyProgress}%</span>
                           </div>
-                          <div>
-                            <h3 className="font-semibold text-foreground">All Shots Complete!</h3>
-                            <p className="text-xs text-muted-foreground">Ready to assemble your final video</p>
-                          </div>
+                          <Progress value={assemblyProgress} className="h-2" />
+                          <p className="text-xs text-muted-foreground">
+                            {assemblyProgress < 30 && "Processing segments..."}
+                            {assemblyProgress >= 30 && assemblyProgress < 60 && "Adding transitions..."}
+                            {assemblyProgress >= 60 && assemblyProgress < 90 && "Optimizing video..."}
+                            {assemblyProgress >= 90 && "Finalizing..."}
+                          </p>
                         </div>
-                        
-                        {!isAssembling && !assemblyId && (
+                      )}
+                      
+                      {assemblyStatus === 'completed' && assemblyId && (
+                        <div className="space-y-2">
                           <Button 
-                            onClick={() => setShowAssemblyDialog(true)}
-                            className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold"
+                            onClick={handleDownloadVideo}
+                            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold"
                             size="lg"
                           >
-                            <Clapperboard className="w-5 h-5 mr-2" />
-                            Generate Final Video
+                            <Download className="w-5 h-5 mr-2" />
+                            Download Video
                           </Button>
-                        )}
-                        
-                        {isAssembling && (
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-muted-foreground">Assembling video...</span>
-                              <span className="font-semibold text-foreground">{assemblyProgress}%</span>
-                            </div>
-                            <Progress value={assemblyProgress} className="h-2" />
-                            <p className="text-xs text-muted-foreground">
-                              {assemblyProgress < 30 && "Processing segments..."}
-                              {assemblyProgress >= 30 && assemblyProgress < 60 && "Adding transitions..."}
-                              {assemblyProgress >= 60 && assemblyProgress < 90 && "Optimizing video..."}
-                              {assemblyProgress >= 90 && "Finalizing..."}
-                            </p>
-                          </div>
-                        )}
-                        
-                        {assemblyStatus === 'completed' && assemblyId && (
-                          <div className="space-y-2">
-                            <Button 
-                              onClick={handleDownloadVideo}
-                              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold"
-                              size="lg"
-                            >
-                              <Download className="w-5 h-5 mr-2" />
-                              Download Final Video
-                            </Button>
-                            <Button 
-                              onClick={() => setShowAssemblyDialog(true)}
-                              variant="outline"
-                              className="w-full border-green-300 hover:bg-green-50 dark:hover:bg-green-950/20"
-                              size="lg"
-                            >
-                              <Settings className="w-5 h-5 mr-2" />
-                              Regenerate with Different Settings
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+                          <Button 
+                            onClick={() => setShowAssemblyDialog(true)}
+                            variant="outline"
+                            className="w-full border-primary/30 hover:bg-primary/5"
+                            size="lg"
+                          >
+                            <Settings className="w-5 h-5 mr-2" />
+                            Regenerate Video
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
 
               {/* Add Shot Form */}
