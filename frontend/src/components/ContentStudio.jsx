@@ -184,12 +184,23 @@ const SortableShotCard = ({ shot, index, projectId, onUpdate, onDelete, uploadin
                     </Badge>
                   )}
                   {shot.uploaded && !isEditing && (
-                    <button
-                      onClick={() => handleFeedback(shot.segment_name)}
-                      className="text-xs text-primary hover:underline font-semibold"
-                    >
-                      Get Feedback
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {shot.generated_by_sora && (
+                        <button
+                          onClick={() => handlePreviewVideo(shot, index)}
+                          className="text-xs text-purple-600 hover:underline font-semibold flex items-center gap-1"
+                        >
+                          <Video className="w-3 h-3" />
+                          Watch Preview
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleFeedback(shot.segment_name)}
+                        className="text-xs text-primary hover:underline font-semibold"
+                      >
+                        Get Feedback
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
